@@ -6,7 +6,7 @@ import crypto from 'node:crypto';
 import type { ReasonCode } from '@flowxis/contracts';
 import type { StoragePort } from '../../ports/index.js';
 
-export const TRIM_FPS = 24;
+export const TRIM_FPS = 30;
 export const TRIM_DURATION_TOLERANCE = 0.5;
 export const FETCH_ATTEMPTS = 3;
 export const DISK_FACTOR = 3;
@@ -125,7 +125,7 @@ export function parseFps(raw: unknown): number {
   return n! / (d ?? 1);
 }
 
-/** Hàm thuần: đúng một luồng video (có thể kèm âm thanh), 24 FPS, độ dài = seconds ± 0,5 giây. */
+/** Hàm thuần: đúng một luồng video (có thể kèm âm thanh), 30 FPS, độ dài = seconds ± 0,5 giây. */
 export function evaluateTrimmedProbe(json: unknown, seconds: number): boolean {
   const data = (json ?? {}) as {
     format?: { duration?: string | number };

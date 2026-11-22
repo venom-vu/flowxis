@@ -8,7 +8,7 @@ export const MOTION_MIN_TRIM_SECONDS = 5;
 /** Số giây Trim tối đa theo chức năng Motion; giới hạn thêm bởi `maxVideoSeconds` của Tier. */
 export const MOTION_MAX_SECONDS = {
   motion_control: 20,
-  motion_control_v2: 10,
+  motion_control_v2: 15,
 } as const;
 export type MotionPipeline = keyof typeof MOTION_MAX_SECONDS;
 

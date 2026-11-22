@@ -104,9 +104,9 @@ export const terms: LegalDocument = {
       bullets: [
         'Công cụ xử lý ảnh (Hoán đổi khuôn mặt, Đổi trang phục, Nâng ngực AI): 100 credit mỗi lượt.',
         'Motion Control V1: 150 credit phí cố định + 15 credit mỗi giây video sau khi cắt (tối thiểu 5 giây; tối đa 20 giây).',
-        'Motion Control V2: 150 credit phí cố định + 60 credit mỗi giây video sau khi cắt (tối thiểu 5 giây; tối đa 10 giây; từ 450 credit mỗi lượt nên không đủ điều kiện dùng bằng 250 credit tặng ban đầu).',
+        'Motion Control V2: 150 credit phí cố định + 60 credit mỗi giây video sau khi cắt (tối thiểu 5 giây; tối đa 15 giây; từ 450 credit mỗi lượt nên không đủ điều kiện dùng bằng 250 credit tặng ban đầu).',
         'Hạng FREE: miễn phí (tặng 250 credit dùng thử cho tài khoản mới hợp lệ), chạy đồng thời 1 tác vụ, ưu tiên #10, video tối đa 20 giây và thời gian chờ hàng đợi tối đa 15 phút (quá hạn sẽ tự hủy và hoàn 100% credit).',
-        'Các gói nạp và hạng trả phí: Starter 49.000đ (5.000 credit, chạy đồng thời 2 tác vụ, ưu tiên #3); Pro 99.000đ (12.000 credit, chạy đồng thời 3 tác vụ, ưu tiên #2); Creator 199.000đ (28.000 credit, chạy đồng thời 5 tác vụ, ưu tiên #1). Cả ba hạng trả phí đều hỗ trợ tối đa 20 giây cho V1 và 10 giây cho V2.',
+        'Các gói nạp và hạng trả phí: Starter 49.000đ (5.000 credit, chạy đồng thời 2 tác vụ, ưu tiên #3); Pro 99.000đ (12.000 credit, chạy đồng thời 3 tác vụ, ưu tiên #2); Creator 199.000đ (28.000 credit, chạy đồng thời 5 tác vụ, ưu tiên #1). Cả ba hạng trả phí đều hỗ trợ tối đa 20 giây cho V1 và 15 giây cho V2.',
         'Hạng trả phí được giữ khi tổng credit còn lại (gồm số dư khả dụng và credit đang tạm giữ) từ 100 credit trở lên; khi giảm xuống dưới 100 credit, tài khoản tự động trở về hạng FREE.',
         'Credit được tạm giữ khi tạo tác vụ và chỉ bị trừ khi tác vụ thành công. Nếu tác vụ thất bại, quá thời gian chờ hoặc được hủy khi đang chờ trong hàng đợi, 100% credit được hoàn lại.',
         'Credit không có thời hạn sử dụng, không quy đổi thành tiền mặt và không chuyển nhượng giữa các tài khoản.',

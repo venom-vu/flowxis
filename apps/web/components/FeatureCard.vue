@@ -9,6 +9,47 @@ const emit = defineEmits<{
   select: [feature: AiFeatureTool];
 }>();
 
+// Mỗi banner ảnh có bản AVIF cùng tên cạnh bản WebP (nhỏ hơn ~30–50%); WebP là phương án dự phòng.
+const avifUrl = computed(() =>
+  props.feature.bannerUrl.replace(/\.(webp|png|jpe?g)$/i, ".avif"),
+);
+
+// Poster video là ảnh WebP cùng tên với hậu tố `-poster`, hiện ngay trong lúc video chưa tải.
+const posterUrl = computed(() =>
+  props.feature.bannerUrl.replace(/\.mp4$/i, "-poster.webp"),
+);
+
+// Chỉ gán src cho video khi card vào viewport (tránh tải 3–4MB/video khi chưa cuộn tới);
+// cuộn ra ngoài thì tạm dừng để tiết kiệm băng thông và CPU.
+const videoEl = ref<HTMLVideoElement | null>(null);
+const videoSrc = ref<string | undefined>(undefined);
+let observer: IntersectionObserver | null = null;
+
+onMounted(() => {
+  const el = videoEl.value;
+  if (!el || props.feature.bannerType !== "video") return;
+  if (typeof IntersectionObserver === "undefined") {
+    videoSrc.value = props.feature.bannerUrl;
+    return;
+  }
+  observer = new IntersectionObserver(
+    (entries) => {
+      for (const entry of entries) {
+        if (entry.isIntersecting) {
+          videoSrc.value ??= props.feature.bannerUrl;
+          void el.play().catch(() => undefined);
+        } else {
+          el.pause();
+        }
+      }
+    },
+    { rootMargin: "200px" },
+  );
+  observer.observe(el);
+});
+
+onBeforeUnmount(() => observer?.disconnect());
+
 function handleOpenWorkspace(): void {
   emit("select", props.feature);
 }
@@ -35,22 +76,27 @@ function handleOpenWorkspace(): void {
       >
         <video
           v-if="feature.bannerType === 'video'"
-          :src="feature.bannerUrl"
+          ref="videoEl"
+          :src="videoSrc"
+          :poster="posterUrl"
           class="absolute inset-0 h-full w-full object-cover"
           autoplay
           loop
           muted
           playsinline
-          preload="metadata"
+          preload="none"
           aria-hidden="true"
         />
-        <img
-          v-else
-          :src="feature.bannerUrl"
-          :alt="`Ảnh minh họa ${feature.titleVi}`"
-          class="absolute inset-0 h-full w-full object-cover"
-          loading="lazy"
-        />
+        <picture v-else>
+          <source :srcset="avifUrl" type="image/avif" />
+          <img
+            :src="feature.bannerUrl"
+            :alt="`Ảnh minh họa ${feature.titleVi}`"
+            class="absolute inset-0 h-full w-full object-cover"
+            loading="lazy"
+            decoding="async"
+          />
+        </picture>
         <div class="relative flex items-center justify-between gap-2">
           <span
             class="inline-flex items-center gap-1.5 rounded-full border border-cyber-border bg-cyber-bg/80 px-2.5 py-1 text-xs font-medium text-cyber-text"

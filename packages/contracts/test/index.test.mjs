@@ -1135,6 +1135,7 @@ describe('@flowxis/contracts', () => {
       assert.equal(motionPrice(20), 450);
       assert.equal(motionPrice(5, 'motion_control_v2'), 450);
       assert.equal(motionPrice(10, 'motion_control_v2'), 750);
+      assert.equal(motionPrice(15, 'motion_control_v2'), 1050);
       for (const bad of [0, -1, 1.5, NaN]) assert.throws(() => motionPrice(bad));
       assert.ok(TASK_PIPELINES.includes('motion_control'));
     });

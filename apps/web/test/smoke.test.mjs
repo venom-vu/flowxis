@@ -287,12 +287,12 @@ describe('@flowxis/web — Story 1.4 Nuxt 4 mobile-first & API client', () => {
       calculateFeatureEstimatedCredits(motionControlCreator, 18),
       pricing.pipelines.motionControlBaseCredits + 18 * pricing.pipelines.motionControlCreditsPerSecond,
     );
-    // Motion v2 giới hạn 10 giây theo chức năng, kể cả gói Creator
+    // Motion v2 giới hạn 15 giây theo chức năng, kể cả gói Creator
     const motionV2Creator = creatorCatalog.find((f) => f.id === 'motion-control-v2');
     assert.ok(motionV2Creator);
-    assert.equal(motionV2Creator.tierCapSeconds, 10);
-    // v2: 150 + 60 × giây (10 giây = 750 credit)
-    assert.equal(calculateFeatureEstimatedCredits(motionV2Creator, 10), 750);
+    assert.equal(motionV2Creator.tierCapSeconds, 15);
+    // v2: 150 + 60 × giây (15 giây = 1.050 credit)
+    assert.equal(calculateFeatureEstimatedCredits(motionV2Creator, 15), 1050);
 
     assert.equal(FEATURE_CATEGORIES.length, 3);
   });
@@ -1484,7 +1484,9 @@ describe('@flowxis/web — Header cố định, popover tài khoản và đăng 
 
   it('header: menu căn trái; khách thấy Bảng giá, đã đăng nhập thấy Nạp Credit sát avatar', () => {
     const header = read('components/AppTopHeader.vue');
-    assert.doesNotMatch(header, /Lịch Sử|lucide:history/);
+    // Lịch sử tác vụ chỉ nằm trong nav khi đã đăng nhập, ngay sau Tải TikTok.
+    assert.match(header, /isLoggedIn\.value[\s\S]{0,200}to: "\/tasks"[\s\S]{0,80}labelVi: "Lịch sử tác vụ"/);
+    assert.ok(header.indexOf('/tiktok-downloader') < header.indexOf("/tasks"));
     assert.doesNotMatch(header, /labelVi: 'Bảng Giá'/);
     // Menu nằm ngay sau logo (không justify-between), cụm bên phải đẩy sang phải bằng ml-auto.
     assert.doesNotMatch(header, /justify-between/);

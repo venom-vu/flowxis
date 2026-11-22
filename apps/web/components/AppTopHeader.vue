@@ -40,9 +40,21 @@ const baseNavItems = [
   },
 ] as const;
 
-const navItems = baseNavItems;
-
 const isLoggedIn = computed<boolean>(() => Boolean(props.email));
+
+// Lịch sử tác vụ chỉ hiển thị khi đã đăng nhập, đứng ngay sau Tải TikTok.
+const navItems = computed(() =>
+  isLoggedIn.value
+    ? [
+        ...baseNavItems,
+        {
+          to: "/tasks",
+          labelVi: "Lịch sử tác vụ",
+          icon: "lucide:history",
+        },
+      ]
+    : baseNavItems,
+);
 
 const formattedBalance = computed<string>(() => {
   if (typeof props.balance !== "number" || !Number.isFinite(props.balance)) {

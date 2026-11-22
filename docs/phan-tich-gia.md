@@ -11,7 +11,7 @@
 | Outfit Change (`outfit_change`) | Cố định | **100** | |
 | Body Retouch (`body_retouch`) | Cố định | **100** | |
 | Motion Control (`motion_control`) | 150 + 15 × giây | **225 – 450** | Trim 5–20 giây |
-| Motion Control V2 (`motion_control_v2`) | 150 + 60 × giây | **450 – 750** | Trim 5–10 giây |
+| Motion Control V2 (`motion_control_v2`) | 150 + 60 × giây | **450 – 1.050** | Trim 5–15 giây |
 | Veo 3 720p (`veo3`) | Cố định / video 8s | **500** | Model `rhart-video-v3.1-pro` |
 | Veo 3 1080p | Cố định / video 8s | **700** | |
 | Veo 3 4K | Cố định / video 8s | **950** | |
