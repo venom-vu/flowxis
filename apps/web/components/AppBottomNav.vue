@@ -1,11 +1,7 @@
 <script setup lang="ts">
 import { useRoute } from '#imports';
-import { useAuthDialog } from '~/composables/useAuthDialog';
-import { usePricingConfig } from '~/composables/usePricingConfig';
 
 const route = useRoute();
-const { open: openAuthDialog } = useAuthDialog();
-const { me } = usePricingConfig();
 
 const bottomTabs = [
   {
@@ -15,9 +11,15 @@ const bottomTabs = [
     icon: 'lucide:layout-grid',
   },
   {
+    id: 'tasks',
+    to: '/tasks',
+    labelVi: 'Tác vụ',
+    icon: 'lucide:list-checks',
+  },
+  {
     id: 'history',
     to: '/history',
-    labelVi: 'Lịch sử',
+    labelVi: 'Lịch sử nạp',
     icon: 'lucide:clock-3',
   },
   {
@@ -27,14 +29,6 @@ const bottomTabs = [
     icon: 'lucide:gem',
   },
 ] as const;
-
-function handleAccountClick(): void {
-  if (me.value) {
-    openAuthDialog('account');
-  } else {
-    openAuthDialog('login');
-  }
-}
 
 function isTabActive(targetPath: string): boolean {
   if (targetPath === '/') {
@@ -65,15 +59,6 @@ function isTabActive(targetPath: string): boolean {
         <Icon :name="tab.icon" class="h-5 w-5 shrink-0" />
         <span class="truncate">{{ tab.labelVi }}</span>
       </NuxtLink>
-      <button
-        type="button"
-        data-testid="bottom-account-tab"
-        class="touch-target flex min-h-[48px] min-w-[48px] flex-col items-center justify-center gap-1 rounded-lg px-2 py-1.5 text-xs font-medium text-cyber-muted transition hover:text-cyber-text"
-        @click="handleAccountClick"
-      >
-        <Icon name="lucide:user-round" class="h-5 w-5 shrink-0" />
-        <span class="truncate">Tôi</span>
-      </button>
     </div>
   </nav>
 </template>

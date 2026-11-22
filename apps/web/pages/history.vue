@@ -1,45 +1,52 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
-import { clearNuxtData, useAsyncData } from '#imports';
-import type { LedgerEntryType, WalletLedgerResponse } from '@flowxis/contracts';
-import { useApiClient } from '~/composables/useApiClient';
-import { useAuth } from '~/composables/useAuth';
-import { useAuthDialog } from '~/composables/useAuthDialog';
-import { useCursorPager } from '~/composables/useCursorPager';
-import { resolveApiErrorMessageVi } from '~/utils/api-client';
-import { isUnauthorizedError } from '~/utils/auth-session';
-import { formatSignedCreditsVi } from '~/utils/catalog';
+import { computed, ref, watch } from "vue";
+import { clearNuxtData, useAsyncData } from "#imports";
+import type { LedgerEntryType, WalletLedgerResponse } from "@flowxis/contracts";
+import { useApiClient } from "~/composables/useApiClient";
+import { useAuth } from "~/composables/useAuth";
+import { useAuthDialog } from "~/composables/useAuthDialog";
+import { useCursorPager } from "~/composables/useCursorPager";
+import { resolveApiErrorMessageVi } from "~/utils/api-client";
+import { isUnauthorizedError } from "~/utils/auth-session";
+import { formatSignedCreditsVi } from "~/utils/catalog";
 import {
   createWalletLedgerPagination,
   formatTimestampVi,
-} from '~/utils/wallet-ledger';
-import { badgeClass, getLedgerTypeTone } from '~/utils/status-badge';
-import { USER_TABLE_PAGE_SIZE, userTable } from '~/utils/user-table';
-import { LEDGER_FILTER_FIELDS, compactFilters, emptyFilters } from '~/utils/history-filters';
-import { usePageSeo } from '~/composables/usePageSeo';
+} from "~/utils/wallet-ledger";
+import { badgeClass, getLedgerTypeTone } from "~/utils/status-badge";
+import { USER_TABLE_PAGE_SIZE, userTable } from "~/utils/user-table";
+import {
+  LEDGER_FILTER_FIELDS,
+  compactFilters,
+  emptyFilters,
+} from "~/utils/history-filters";
+import { usePageSeo } from "~/composables/usePageSeo";
 
 usePageSeo({
-  title: 'Lịch Sử Credit — flowxis',
-  description:
-    'Lịch sử giao dịch credit của tài khoản flowxis.',
+  title: "Lịch Sử Credit — flowxis",
+  description: "Lịch sử giao dịch credit của tài khoản flowxis.",
   noindex: true,
 });
-
 
 const { client, accessToken } = useApiClient();
 const { isAuthenticated, sessionChecked } = useAuth();
 const { open: openAuthDialog } = useAuthDialog();
 
-const filterModel = ref<Record<string, string>>(emptyFilters(LEDGER_FILTER_FIELDS));
-const appliedFilters = computed(() => compactFilters(filterModel.value) as {
-  from?: string;
-  to?: string;
-  type?: LedgerEntryType;
-});
+const filterModel = ref<Record<string, string>>(
+  emptyFilters(LEDGER_FILTER_FIELDS),
+);
+const appliedFilters = computed(
+  () =>
+    compactFilters(filterModel.value) as {
+      from?: string;
+      to?: string;
+      type?: LedgerEntryType;
+    },
+);
 const hasFilter = computed(() => Object.keys(appliedFilters.value).length > 0);
 
 const ledgerAsync = useAsyncData<WalletLedgerResponse>(
-  'flowxis-wallet-ledger',
+  "flowxis-wallet-ledger",
   () => client.getWalletLedger({ pageSize: 20, ...appliedFilters.value }),
   { watch: [appliedFilters] },
 );
@@ -86,7 +93,7 @@ watch(accessToken, (newToken, oldToken) => {
   // Chỉ làm mới khi trạng thái đăng nhập đổi; xoay vòng token không được xóa các trang đã cuộn.
   if (Boolean(newToken) !== Boolean(oldToken)) {
     if (!newToken) {
-      clearNuxtData('flowxis-wallet-ledger');
+      clearNuxtData("flowxis-wallet-ledger");
       pagination.reset();
     }
     if (ledgerAsync.pending.value) {
@@ -164,7 +171,7 @@ async function handleRefresh(): Promise<void> {
     >
       <div class="space-y-1">
         <h1 class="font-display text-2xl font-bold text-cyber-text">
-          Lịch Sử Biến Động Credit & Tác Vụ
+          Lịch Sử Biến Động Credit
         </h1>
       </div>
 
@@ -191,9 +198,7 @@ async function handleRefresh(): Promise<void> {
       @retry="refreshLedger"
     />
 
-    <section
-      class="rounded-2xl border border-cyber-border bg-cyber-surface"
-    >
+    <section class="rounded-2xl border border-cyber-border bg-cyber-surface">
       <HistoryFilterBar
         v-if="!isUnauthenticated"
         :model-value="filterModel"
@@ -243,7 +248,8 @@ async function handleRefresh(): Promise<void> {
           Yêu Cầu Đăng Nhập
         </h3>
         <p class="mt-1.5 max-w-sm text-sm text-cyber-muted">
-          Vui lòng đăng nhập để xem lịch sử biến động credit và chi tiết các tác vụ của bạn.
+          Vui lòng đăng nhập để xem lịch sử biến động credit và chi tiết các tác
+          vụ của bạn.
         </p>
         <button
           type="button"
@@ -302,13 +308,17 @@ async function handleRefresh(): Promise<void> {
           <Icon name="lucide:inbox" class="h-7 w-7" />
         </div>
         <h3 class="text-base font-semibold text-cyber-text">
-          {{ hasFilter ? 'Không Có Biến Động Khớp Bộ Lọc' : 'Chưa Có Biến Động Số Dư Nào' }}
+          {{
+            hasFilter
+              ? "Không Có Biến Động Khớp Bộ Lọc"
+              : "Chưa Có Biến Động Số Dư Nào"
+          }}
         </h3>
         <p class="mt-1.5 max-w-sm text-sm text-cyber-muted">
           {{
             hasFilter
-              ? 'Hãy thử đổi hoặc xóa bớt điều kiện lọc.'
-              : 'Mọi bút toán tặng credit trải nghiệm, nạp gói hoặc tạm giữ và hoàn credit tác vụ sẽ hiển thị tại đây.'
+              ? "Hãy thử đổi hoặc xóa bớt điều kiện lọc."
+              : "Mọi bút toán tặng credit trải nghiệm, nạp gói hoặc tạm giữ và hoàn credit tác vụ sẽ hiển thị tại đây."
           }}
         </p>
       </div>
@@ -322,7 +332,9 @@ async function handleRefresh(): Promise<void> {
                 <th scope="col" :class="userTable.th">Thời gian</th>
                 <th scope="col" :class="userTable.th">Loại</th>
                 <th scope="col" :class="userTable.th">Nội dung</th>
-                <th scope="col" :class="[userTable.th, 'text-right']">Biến động</th>
+                <th scope="col" :class="[userTable.th, 'text-right']">
+                  Biến động
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -332,7 +344,12 @@ async function handleRefresh(): Promise<void> {
                 :data-testid="`ledger-entry-${item.id}`"
                 :class="userTable.row"
               >
-                <td :class="[userTable.td, 'whitespace-nowrap font-mono text-xs text-cyber-muted']">
+                <td
+                  :class="[
+                    userTable.td,
+                    'whitespace-nowrap font-mono text-xs text-cyber-muted',
+                  ]"
+                >
                   {{ formatTimestampVi(item.createdAt) }}
                 </td>
                 <td :class="[userTable.td, 'whitespace-nowrap']">
@@ -344,9 +361,14 @@ async function handleRefresh(): Promise<void> {
                   </span>
                 </td>
                 <td :class="[userTable.td, 'break-words']">
-                  {{ item.note || 'Giao dịch sổ cái hệ thống' }}
+                  {{ item.note || "Giao dịch sổ cái hệ thống" }}
                 </td>
-                <td :class="[userTable.td, 'whitespace-nowrap text-right font-mono font-bold']">
+                <td
+                  :class="[
+                    userTable.td,
+                    'whitespace-nowrap text-right font-mono font-bold',
+                  ]"
+                >
                   <span
                     :class="
                       item.amount > 0
@@ -372,7 +394,10 @@ async function handleRefresh(): Promise<void> {
           data-testid="loading-more-spinner"
           class="flex items-center justify-center gap-2 border-t border-cyber-border p-4 text-xs font-semibold text-cyber-muted"
         >
-          <Icon name="lucide:loader-2" class="h-4 w-4 animate-spin text-cyber-violet" />
+          <Icon
+            name="lucide:loader-2"
+            class="h-4 w-4 animate-spin text-cyber-violet"
+          />
           <span>Đang tải thêm bút toán...</span>
         </div>
 

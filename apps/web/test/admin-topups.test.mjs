@@ -1069,10 +1069,8 @@ export const useApiClient = () => ({
         topups: [MOCK_ADMIN_TOPUPS_BY_STATUS.pending], // giả định có dữ liệu lọt vào
       });
 
-      assert.match(htmlUser, /data-testid="admin-forbidden-state"/);
-      assert.match(htmlUser, /403 — Truy cập bị từ chối/);
-      assert.match(htmlUser, /data-testid="admin-forbidden-login-button"/);
-      assert.match(htmlUser, /Đăng nhập/);
+      assert.match(htmlUser, /data-testid="admin-not-found-state"/);
+      assert.match(htmlUser, /404 — Không tìm thấy trang/);
       assert.equal(
         htmlUser.includes('P4N8T2WD'),
         false,
@@ -1148,8 +1146,8 @@ export const useApiClient = () => ({
 
       assert.match(html, /data-testid="admin-auth-loading-state"/);
       assert.match(html, /Đang kiểm tra quyền quản trị viên\.\.\./);
-      assert.doesNotMatch(html, /data-testid="admin-forbidden-state"/);
-      assert.doesNotMatch(html, /403 — Truy cập bị từ chối/);
+      assert.doesNotMatch(html, /data-testid="admin-not-found-state"/);
+      assert.doesNotMatch(html, /404 — Không tìm thấy trang/);
     });
 
     it('isOverdue chỉ hiển thị nhãn QUÁ HẠN cho đơn có trạng thái pending, không hiển thị trên đơn expired, approved hay awaiting_transfer', async () => {
@@ -1291,6 +1289,7 @@ export const useApiClient = () => ({
           setup() {
             return {
               route: { path: currentPath },
+              isAdmin: true,
               adminNavItems: [
                 { to: '/admin/stats', labelVi: 'Thống kê', icon: 'lucide:bar-chart-3' },
                 { to: '/admin/topups', labelVi: 'Duyệt đơn VietQR', icon: 'lucide:receipt' },

@@ -552,8 +552,8 @@ describe('Story 6.8: các trang quản trị vận hành (SSR)', () => {
       await renderAudit({ isAdmin: false, auditItems: MOCK_ADMIN_AUDIT_RESPONSE.items }),
     ];
     for (const html of pages) {
-      assert.match(html, /data-testid="admin-forbidden-state"/);
-      assert.match(html, /403/);
+      assert.match(html, /data-testid="admin-not-found-state"/);
+      assert.match(html, /404/);
       assert.doesNotMatch(html, /ops-status-section|ERROR_RATE|user@example\.com|ops-audit-list/);
     }
   });

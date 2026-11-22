@@ -1,10 +1,7 @@
 <script setup lang="ts">
-import { useAuthDialog } from '~/composables/useAuthDialog';
 import { Button } from '@/components/ui/button';
 
 defineProps<{ pending: boolean; admin: boolean }>();
-
-const { open: openAuthDialog } = useAuthDialog();
 </script>
 
 <template>
@@ -18,20 +15,17 @@ const { open: openAuthDialog } = useAuthDialog();
     <p class="text-sm text-muted-foreground">Đang kiểm tra quyền quản trị viên...</p>
   </section>
 
+  <!-- Không phải admin: giả như trang không tồn tại, không lộ giao diện quản trị -->
   <section
     v-else-if="!admin"
-    data-testid="admin-forbidden-state"
+    data-testid="admin-not-found-state"
     class="flex min-h-[320px] flex-col items-center justify-center text-center"
   >
-    <h1 class="text-2xl font-semibold tracking-tight">403 — Truy cập bị từ chối</h1>
+    <h1 class="text-2xl font-semibold tracking-tight">404 — Không tìm thấy trang</h1>
     <p class="mt-2 max-w-md text-base text-muted-foreground">
-      Trang này chỉ dành cho Quản trị viên (Admin).
+      Trang bạn tìm kiếm không tồn tại hoặc đã bị di chuyển.
     </p>
-    <div class="mt-6 flex flex-wrap items-center justify-center gap-3">
-      <Button type="button" data-testid="admin-forbidden-login-button" @click="() => openAuthDialog('login')">
-        <Icon name="lucide:log-in" class="h-4 w-4" />
-        <span>Đăng nhập</span>
-      </Button>
+    <div class="mt-6">
       <Button as-child variant="outline">
         <NuxtLink to="/">
           <Icon name="lucide:arrow-left" class="h-4 w-4" />

@@ -331,7 +331,7 @@ describe('@flowxis/web — Story 1.4 Nuxt 4 mobile-first & API client', () => {
       path.join(webRoot, 'components/AppBottomNav.vue'),
       'utf8',
     );
-    for (const tabLabel of ['Kho AI', 'Lịch sử', 'Bảng giá', 'Tôi']) {
+    for (const tabLabel of ['Kho AI', 'Tác vụ', 'Lịch sử nạp', 'Bảng giá']) {
       assert.equal(
         bottomNavRaw.includes(tabLabel),
         true,
@@ -1532,10 +1532,10 @@ describe('@flowxis/web — Header cố định, popover tài khoản và đăng 
     assert.doesNotMatch(dialog, /logout-button|Đăng xuất|useAuth\(/);
   });
 
-  it('khách bấm tab Tôi mở dialog đăng nhập thay vì chuyển trang', () => {
+  it('thanh điều hướng dưới không còn tab Tôi và dialog tài khoản', () => {
     const nav = read('components/AppBottomNav.vue');
-    assert.match(nav, /openAuthDialog\('login'\)/);
-    assert.doesNotMatch(nav, /navigateTo/);
+    assert.doesNotMatch(nav, /openAuthDialog|bottom-account-tab|Tôi/);
+    assert.match(nav, /to: '\/tasks'[\s\S]{0,40}labelVi: 'Tác vụ'/);
   });
 
   it('SSR trang chủ khi chưa đăng nhập: header cố định, có nút Đăng nhập và Bảng giá, ẩn credit và avatar', async () => {

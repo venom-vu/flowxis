@@ -65,7 +65,14 @@ const filteredFeatures = computed<AiFeatureTool[]>(() => {
   });
 });
 
+const MOBILE_MAX_WIDTH_PX = 768;
+
 function openWorkspace(feature: AiFeatureTool): void {
+  // Mobile (< 768px): chuyển thẳng sang trang tính năng thay vì mở dialog
+  if (import.meta.client && window.innerWidth < MOBILE_MAX_WIDTH_PX) {
+    void navigateTo(`/${feature.slug}`);
+    return;
+  }
   activeFeature.value = feature;
   isWorkspaceOpen.value = true;
 }
@@ -97,9 +104,8 @@ function closeWorkspace(): void {
             Chọn Công Cụ AI Và Mở Không Gian Làm Việc
           </h1>
           <p class="max-w-2xl text-sm text-cyber-muted">
-            Chạm vào bất kỳ thẻ tính năng nào bên dưới để mở hộp thoại làm việc
-            trung tâm, xem so sánh Trước / Sau và ước tính chi phí credit theo
-            thời gian thực.
+            Chạm vào bất kỳ thẻ tính năng nào bên dưới để bắt đầu làm việc, xem so
+            sánh Trước / Sau và ước tính chi phí credit theo thời gian thực.
           </p>
         </div>
 

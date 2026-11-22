@@ -2,6 +2,7 @@
 import { provide } from 'vue';
 import { useHead, useRoute } from '#imports';
 import { UI_VARIANT_KEY } from '~/utils/form-ui';
+import { useAdminAccess } from '~/composables/useAdminAccess';
 
 provide(UI_VARIANT_KEY, 'admin');
 
@@ -16,6 +17,8 @@ useHead({
 });
 
 const route = useRoute();
+// Chỉ admin mới thấy khung quản trị (header/sidebar); người khác chỉ thấy trang 404.
+const { isAdmin } = useAdminAccess();
 
 // Chỉ giữ các mục đã hoàn thiện; mục chưa làm xong không hiện trong menu.
 const adminNavItems = [
@@ -59,6 +62,7 @@ const adminNavItems = [
     class="flex min-h-dvh w-full max-w-[100vw] flex-col overflow-x-hidden bg-background font-geist text-foreground antialiased"
   >
     <header
+      v-if="isAdmin"
       class="fixed inset-x-0 top-0 z-40 flex h-16 items-center justify-between border-b bg-background px-4 sm:px-6"
     >
       <div class="flex min-w-0 items-center gap-3 text-sm">
@@ -84,9 +88,13 @@ const adminNavItems = [
     </header>
 
     <!-- Chừa chỗ cho header cố định cao 64px; desktop chừa thêm 220px cho sidebar cố định -->
-    <div class="flex min-w-0 flex-1 flex-col pt-16 lg:pl-[220px]">
+    <div
+      class="flex min-w-0 flex-1 flex-col"
+      :class="isAdmin ? 'pt-16 lg:pl-[220px]' : ''"
+    >
       <!-- Mobile: thanh menu ngang dính dưới header. Desktop: sidebar cố định bên trái, cuộn riêng khi dài -->
       <aside
+        v-if="isAdmin"
         aria-label="Thanh điều hướng quản trị"
         data-testid="admin-left-sidebar"
         class="sticky top-16 z-30 w-full shrink-0 border-b bg-background lg:fixed lg:bottom-0 lg:left-0 lg:top-16 lg:w-[220px] lg:overflow-y-auto lg:border-b-0 lg:border-r"
