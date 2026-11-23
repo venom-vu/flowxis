@@ -90,8 +90,15 @@ function isActiveRoute(targetPath: string): boolean {
         aria-label="Trang chủ flowxis"
         class="touch-target inline-flex min-h-[48px] min-w-[48px] items-center gap-2.5 rounded-lg pr-2 text-cyber-text transition hover:text-cyber-violet"
       >
+        <img
+          src="/flowxis.png"
+          alt=""
+          width="228"
+          height="166"
+          class="h-8 w-auto shrink-0"
+        />
         <span class="font-display text-2xl font-bold tracking-tight">
-          flowxis
+          Flowxis
         </span>
       </NuxtLink>
 
