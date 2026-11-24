@@ -123,6 +123,7 @@ export function buildAiFeatureCatalog(
     motionControlV2CreditsPerSecond,
     veo3Credits720p,
     museVideoCredits,
+    removeWatermarkBaseCredits,
     removeWatermarkCreditsPerSecond,
   } = pricing.pipelines;
 
@@ -304,8 +305,9 @@ export function buildAiFeatureCatalog(
       badgeVi: "Mới",
       icon: "lucide:eraser",
       billingMode: "per_second",
+      baseCredits: removeWatermarkBaseCredits,
       unitCredits: removeWatermarkCreditsPerSecond,
-      priceBadgeVi: `${formatNumberVi(removeWatermarkCreditsPerSecond)} CR / giây`,
+      priceBadgeVi: `${formatNumberVi(removeWatermarkBaseCredits)} + ${formatNumberVi(removeWatermarkCreditsPerSecond)} CR / giây`,
       tierCapSeconds: watermarkCap,
       tierCapLabelVi: `Tối đa ${formatNumberVi(watermarkCap)} giây`,
       beforeLabelVi: "Video có watermark, logo, phụ đề",

@@ -37,15 +37,16 @@ export function motionCapSeconds(pipeline: MotionPipeline, tierCapSeconds: numbe
 /** Xóa watermark/logo/phụ đề: Trim tối thiểu và tối đa (giây). Giới hạn riêng của chức năng, không phụ thuộc `maxVideoSeconds` của Tier. */
 export const REMOVE_WATERMARK_MIN_SECONDS = MOTION_MIN_TRIM_SECONDS;
 export const REMOVE_WATERMARK_MAX_SECONDS = 15;
-/** Giá = đơn giá mỗi giây × số giây (không có phí cố định). */
-export const REMOVE_WATERMARK_CREDITS_PER_SECOND = 20;
+/** Giá = phí cố định + đơn giá mỗi giây × số giây. */
+export const REMOVE_WATERMARK_BASE_CREDITS = 150;
+export const REMOVE_WATERMARK_CREDITS_PER_SECOND = 15;
 /** Prompt tùy chọn; để trống thì server dùng prompt mặc định. */
 export const REMOVE_WATERMARK_PROMPT_MAX_LENGTH = 300;
 export function removeWatermarkPrice(seconds: number): number {
   if (!Number.isInteger(seconds) || seconds <= 0) {
     throw new RangeError('Số giây phải là số nguyên dương.');
   }
-  return REMOVE_WATERMARK_CREDITS_PER_SECOND * seconds;
+  return REMOVE_WATERMARK_BASE_CREDITS + REMOVE_WATERMARK_CREDITS_PER_SECOND * seconds;
 }
 export function removeWatermarkCapSeconds(): number {
   return REMOVE_WATERMARK_MAX_SECONDS;
@@ -514,8 +515,14 @@ export const RemoveWatermarkCreateResponseSchema = TaskBaseSchema.extend({
   if (t.price !== t.creditCost) {
     ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['price'], message: 'price phải bằng creditCost' });
   }
-  if (t.price % REMOVE_WATERMARK_CREDITS_PER_SECOND !== 0) {
-    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['price'], message: 'price phải là bội của giá mỗi giây' });
+  // Giá = phí cố định + đơn giá × số giây nguyên (>= 1): phần dư sau phí cố định phải chia hết cho đơn giá.
+  const rest = t.price - REMOVE_WATERMARK_BASE_CREDITS;
+  if (rest < REMOVE_WATERMARK_CREDITS_PER_SECOND || rest % REMOVE_WATERMARK_CREDITS_PER_SECOND !== 0) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['price'],
+      message: 'price phải bằng phí cố định cộng bội của giá mỗi giây',
+    });
   }
 });
 export type RemoveWatermarkCreateResponse = z.infer<typeof RemoveWatermarkCreateResponseSchema>;

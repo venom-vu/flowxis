@@ -4,6 +4,7 @@ import {
   TASK_PIPELINES,
   TASK_STATUSES,
   type MotionPipeline,
+  REMOVE_WATERMARK_BASE_CREDITS,
   REMOVE_WATERMARK_CREDITS_PER_SECOND,
   type AdminStatsMargin,
   type AdminStatsPipeline,
@@ -134,7 +135,8 @@ export class AdminStatsService {
         const secs = r.ok_seconds_costed ?? 0;
         if (secs <= 0) continue;
         unitUsd = okCost / r.ok_cost_n;
-        unitCredits = (REMOVE_WATERMARK_CREDITS_PER_SECOND * secs) / r.ok_cost_n;
+        // Giá có phí cố định nên so sánh theo Task: doanh thu của Task dài trung bình.
+        unitCredits = REMOVE_WATERMARK_BASE_CREDITS + (REMOVE_WATERMARK_CREDITS_PER_SECOND * secs) / r.ok_cost_n;
       } else if (pipeline === "veo3" || pipeline === "muse_video") {
         // Pipeline tính theo lượt có giá riêng: doanh thu là credit thực thu (hold_amount) trung bình, không lấy giá hiện hành.
         unitUsd = okCost / r.ok_cost_n;

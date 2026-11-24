@@ -115,6 +115,7 @@ import {
   TASK_PIPELINES,
   REMOVE_WATERMARK_MIN_SECONDS,
   REMOVE_WATERMARK_MAX_SECONDS,
+  REMOVE_WATERMARK_BASE_CREDITS,
   REMOVE_WATERMARK_CREDITS_PER_SECOND,
   removeWatermarkPrice,
   removeWatermarkCapSeconds,
@@ -1331,7 +1332,9 @@ describe('@flowxis/contracts', () => {
 });
 
 describe('Remove watermark', () => { it('giá, Cap và schema', () => {
-  assert.equal(removeWatermarkPrice(5), 5 * REMOVE_WATERMARK_CREDITS_PER_SECOND);
+  assert.equal(removeWatermarkPrice(5), 225);
+  assert.equal(removeWatermarkPrice(15), 375);
+  assert.equal(removeWatermarkPrice(5), REMOVE_WATERMARK_BASE_CREDITS + 5 * REMOVE_WATERMARK_CREDITS_PER_SECOND);
   assert.throws(() => removeWatermarkPrice(0), RangeError);
   assert.equal(REMOVE_WATERMARK_MAX_SECONDS, 15);
   assert.equal(removeWatermarkCapSeconds(), 15);
@@ -1348,4 +1351,5 @@ describe('Remove watermark', () => { it('giá, Cap và schema', () => {
   const price = removeWatermarkPrice(5);
   assert.equal(RemoveWatermarkCreateResponseSchema.safeParse({ ...base, creditCost: price, price }).success, true);
   assert.equal(RemoveWatermarkCreateResponseSchema.safeParse({ ...base, creditCost: price + 1, price: price + 1 }).success, false);
+  assert.equal(RemoveWatermarkCreateResponseSchema.safeParse({ ...base, creditCost: 150, price: 150 }).success, false);
 }); });
