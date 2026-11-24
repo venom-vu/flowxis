@@ -56,7 +56,7 @@ const {
           <Icon name="lucide:film" class="h-6 w-6" />
         </span>
         <div class="space-y-1">
-          <h1 class="font-display text-lg font-bold sm:text-2xl">Muse Video Tạo Video AI</h1>
+          <h1 class="font-display text-lg font-bold sm:text-2xl">Tạo Video Với Muse AI</h1>
           <p class="text-xs text-cyber-muted sm:text-sm">
             Tạo video khoảng 10 giây, 720p, có âm thanh từ 1 đến 9 ảnh tham chiếu và mô tả của bạn.
           </p>

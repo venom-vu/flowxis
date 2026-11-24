@@ -58,6 +58,8 @@ import {
   MotionCreateResponseSchema,
   MotionV2CreateRequestSchema,
   MotionV2CreateResponseSchema,
+  RemoveWatermarkCreateRequestSchema,
+  RemoveWatermarkCreateResponseSchema,
   Veo3CreateRequestSchema,
   Veo3CreateResponseSchema,
   VEO3_PROMPT_MAX_LENGTH,
@@ -149,6 +151,8 @@ import {
   type MuseVideoCreateRequest,
   type MuseVideoCreateResponse,
   type MotionV2CreateResponse,
+  type RemoveWatermarkCreateRequest,
+  type RemoveWatermarkCreateResponse,
   type PricingConfigResponse,
   type ReasonCode,
   type ShareInfoResponse,
@@ -196,6 +200,8 @@ export {
   MotionCreateResponseSchema,
   MotionV2CreateRequestSchema,
   MotionV2CreateResponseSchema,
+  RemoveWatermarkCreateRequestSchema,
+  RemoveWatermarkCreateResponseSchema,
   Veo3CreateRequestSchema,
   Veo3CreateResponseSchema,
   VEO3_PROMPT_MAX_LENGTH,
@@ -244,6 +250,8 @@ export {
   type MuseVideoCreateRequest,
   type MuseVideoCreateResponse,
   type MotionV2CreateResponse,
+  type RemoveWatermarkCreateRequest,
+  type RemoveWatermarkCreateResponse,
   type ShareInfoResponse,
   type BodyRetouchCreateRequest,
   type BodyRetouchCreateResponse,
@@ -812,6 +820,23 @@ export function createMotionApiClient(options: MotionApiClientOptions = {}) {
           signal: options?.signal,
         },
         (payload) => MotionV2CreateResponseSchema.parse(payload),
+      );
+    },
+
+    async createRemoveWatermarkTask(
+      rawRequest: RemoveWatermarkCreateRequest,
+      options?: { signal?: AbortSignal },
+    ): Promise<RemoveWatermarkCreateResponse> {
+      const data = RemoveWatermarkCreateRequestSchema.parse(rawRequest);
+      return requestLive(
+        '/tasks/remove-watermark',
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data),
+          signal: options?.signal,
+        },
+        (payload) => RemoveWatermarkCreateResponseSchema.parse(payload),
       );
     },
 

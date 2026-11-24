@@ -1,28 +1,27 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue';
-import type { Topup, TopupPackId } from '@flowxis/contracts';
-import { useAuth } from '~/composables/useAuth';
-import { useAuthDialog } from '~/composables/useAuthDialog';
-import { useCursorPager } from '~/composables/useCursorPager';
-import { usePricingConfig } from '~/composables/usePricingConfig';
-import { useTopup } from '~/composables/useTopup';
-import { TOPUP_FILTER_FIELDS, emptyFilters } from '~/utils/history-filters';
-import { formatNumberVi, formatVndVi } from '~/utils/catalog';
-import { formatTopupTimestampVi } from '~/utils/topup';
+import { computed, onMounted, ref, watch } from "vue";
+import type { Topup, TopupPackId } from "@flowxis/contracts";
+import { useAuth } from "~/composables/useAuth";
+import { useAuthDialog } from "~/composables/useAuthDialog";
+import { useCursorPager } from "~/composables/useCursorPager";
+import { usePricingConfig } from "~/composables/usePricingConfig";
+import { useTopup } from "~/composables/useTopup";
+import { TOPUP_FILTER_FIELDS, emptyFilters } from "~/utils/history-filters";
+import { formatNumberVi, formatVndVi } from "~/utils/catalog";
+import { formatTopupTimestampVi } from "~/utils/topup";
 import {
   badgeClass,
   getTopupPackBadge,
   getTopupStatusBadge,
-} from '~/utils/status-badge';
-import { USER_TABLE_PAGE_SIZE, userTable } from '~/utils/user-table';
-import { usePageSeo } from '~/composables/usePageSeo';
+} from "~/utils/status-badge";
+import { USER_TABLE_PAGE_SIZE, userTable } from "~/utils/user-table";
+import { usePageSeo } from "~/composables/usePageSeo";
 
 usePageSeo({
-  title: 'Bảng Giá Gói Nạp Credit — flowxis',
+  title: "Bảng Giá Gói Nạp Credit — flowxis",
   description:
-    'Bảng giá gói nạp credit và quyền lợi hạng tài khoản flowxis. Thanh toán nhanh qua VietQR.',
+    "Bảng giá gói nạp credit và quyền lợi hạng tài khoản flowxis. Thanh toán nhanh qua VietQR.",
 });
-
 
 const { isAuthenticated } = useAuth();
 const { open: openAuthDialog } = useAuthDialog();
@@ -62,16 +61,37 @@ const {
   applyFilters,
 } = useTopup();
 
-const topupFilterModel = ref<Record<string, string>>(emptyFilters(TOPUP_FILTER_FIELDS));
-const hasTopupFilter = computed(() => Object.keys(listFilters.value).length > 0);
+const topupFilterModel = ref<Record<string, string>>(
+  emptyFilters(TOPUP_FILTER_FIELDS),
+);
+const hasTopupFilter = computed(
+  () => Object.keys(listFilters.value).length > 0,
+);
 
-async function handleTopupFilter(values: Record<string, string>): Promise<void> {
+async function handleTopupFilter(
+  values: Record<string, string>,
+): Promise<void> {
   topupFilterModel.value = values;
   resetPage();
   await applyFilters(values);
 }
 
 const creatingPackId = ref<TopupPackId | null>(null);
+
+// % credit nhận thêm trên mỗi đồng so với gói trả phí nhỏ nhất (mốc 0%).
+const bonusPercentByTier = computed<Record<string, number>>(() => {
+  const paid = (pricing.value?.tiers ?? []).filter((t) => t.priceVnd > 0);
+  if (paid.length === 0) {
+    return {};
+  }
+  const base = paid.reduce((a, b) => (a.priceVnd <= b.priceVnd ? a : b));
+  const baseRate = base.credits / base.priceVnd;
+  const result: Record<string, number> = {};
+  for (const t of paid) {
+    result[t.tier] = Math.round((t.credits / t.priceVnd / baseRate - 1) * 100);
+  }
+  return result;
+});
 
 const {
   page,
@@ -97,21 +117,18 @@ onMounted(() => {
   }
 });
 
-watch(
-  isAuthenticated,
-  (authed) => {
-    if (authed) {
-      void fetchTopups();
-    } else {
-      closeModal();
-      topups.value = [];
-    }
-  },
-);
+watch(isAuthenticated, (authed) => {
+  if (authed) {
+    void fetchTopups();
+  } else {
+    closeModal();
+    topups.value = [];
+  }
+});
 
 async function handleSelectPack(packId: TopupPackId): Promise<void> {
   if (!isAuthenticated.value) {
-    openAuthDialog('login');
+    openAuthDialog("login");
     return;
   }
   if (isCreating.value) {
@@ -132,7 +149,7 @@ function handleOpenOrder(order: Topup): void {
 async function handleRecreateOrder(pack: TopupPackId): Promise<void> {
   if (!isAuthenticated.value) {
     closeModal();
-    openAuthDialog('login');
+    openAuthDialog("login");
     return;
   }
   closeModal();
@@ -165,11 +182,14 @@ function dismissCreateError(): void {
             <Icon name="lucide:gem" class="h-6 w-6" />
           </span>
           <div class="space-y-0.5">
-            <h1 class="font-display text-xl font-bold text-cyber-text sm:text-2xl">
+            <h1
+              class="font-display text-xl font-bold text-cyber-text sm:text-2xl"
+            >
               Bảng Giá Gói Nạp &amp; Quyền Lợi Hạng Tài Khoản
             </h1>
             <p class="text-xs text-cyber-muted">
-              Chọn gói nạp để nhận mã VietQR thanh toán ngay và nâng cấp trần thời lượng video
+              Chọn gói nạp để nhận mã VietQR thanh toán ngay và nâng cấp trần
+              thời lượng video
             </p>
           </div>
         </div>
@@ -241,7 +261,9 @@ function dismissCreateError(): void {
         >
           <div class="space-y-3">
             <div class="flex items-center justify-between gap-2">
-              <h2 class="whitespace-nowrap font-display text-lg font-bold text-cyber-text">
+              <h2
+                class="whitespace-nowrap font-display text-lg font-bold text-cyber-text"
+              >
                 Hạng {{ tierItem.tier }}
               </h2>
               <span
@@ -253,9 +275,20 @@ function dismissCreateError(): void {
               </span>
             </div>
 
-            <p class="font-mono text-2xl font-bold text-cyber-cyan">
-              {{ formatVndVi(tierItem.priceVnd) }}
-            </p>
+            <div class="flex flex-wrap items-center gap-x-2.5 gap-y-1.5">
+              <p class="font-mono text-2xl font-bold text-cyber-cyan">
+                {{ formatVndVi(tierItem.priceVnd) }}
+              </p>
+              <span
+                v-if="(bonusPercentByTier[tierItem.tier] ?? 0) > 0"
+                :data-testid="`tier-bonus-badge-${tierItem.tier}`"
+                :title="`Nhận nhiều hơn ${bonusPercentByTier[tierItem.tier]}% credit trên mỗi đồng so với gói nhỏ nhất`"
+                class="inline-flex items-center gap-1 whitespace-nowrap rounded-full border border-cyber-success/40 bg-cyber-success/15 px-2 py-0.5 font-mono text-xs font-bold text-cyber-success"
+              >
+                <Icon name="lucide:trending-up" class="h-3.5 w-3.5" />
+                <span>+{{ bonusPercentByTier[tierItem.tier] }}% credit</span>
+              </span>
+            </div>
 
             <ul
               class="space-y-2 border-t border-cyber-border pt-3 text-xs text-cyber-muted"
@@ -317,7 +350,7 @@ function dismissCreateError(): void {
               <span>
                 {{
                   isCreating && creatingPackId === tierItem.packId
-                    ? 'Đang tạo mã QR...'
+                    ? "Đang tạo mã QR..."
                     : `Nạp gói ${tierItem.tier} qua VietQR`
                 }}
               </span>
@@ -472,7 +505,9 @@ function dismissCreateError(): void {
       <!-- Trạng thái rỗng -->
       <div
         v-else-if="!isLoadingList && topups.length === 0"
-        :data-testid="hasTopupFilter ? 'topup-list-filter-empty' : 'topup-list-empty'"
+        :data-testid="
+          hasTopupFilter ? 'topup-list-filter-empty' : 'topup-list-empty'
+        "
         class="flex flex-col items-center justify-center p-10 text-center sm:p-12"
       >
         <div
@@ -481,10 +516,18 @@ function dismissCreateError(): void {
           <Icon name="lucide:inbox" class="h-7 w-7" />
         </div>
         <h3 class="text-base font-semibold text-cyber-text">
-          {{ hasTopupFilter ? 'Không có đơn nạp khớp bộ lọc' : 'Bạn chưa có đơn nạp nào' }}
+          {{
+            hasTopupFilter
+              ? "Không có đơn nạp khớp bộ lọc"
+              : "Bạn chưa có đơn nạp nào"
+          }}
         </h3>
         <p class="mt-1.5 max-w-sm text-sm text-cyber-muted">
-          {{ hasTopupFilter ? 'Hãy thử đổi hoặc xóa bớt điều kiện lọc.' : 'Các đơn nạp qua VietQR sẽ được lưu và hiển thị trạng thái xử lý tại đây.' }}
+          {{
+            hasTopupFilter
+              ? "Hãy thử đổi hoặc xóa bớt điều kiện lọc."
+              : "Các đơn nạp qua VietQR sẽ được lưu và hiển thị trạng thái xử lý tại đây."
+          }}
         </p>
       </div>
 
@@ -498,9 +541,15 @@ function dismissCreateError(): void {
                 <th scope="col" :class="userTable.th">Thời gian</th>
                 <th scope="col" :class="userTable.th">Gói</th>
                 <th scope="col" :class="userTable.th">Trạng thái</th>
-                <th scope="col" :class="[userTable.th, 'text-right']">Số tiền</th>
-                <th scope="col" :class="[userTable.th, 'text-right']">Credit</th>
-                <th scope="col" :class="[userTable.th, 'text-right']">Chi tiết</th>
+                <th scope="col" :class="[userTable.th, 'text-right']">
+                  Số tiền
+                </th>
+                <th scope="col" :class="[userTable.th, 'text-right']">
+                  Credit
+                </th>
+                <th scope="col" :class="[userTable.th, 'text-right']">
+                  Chi tiết
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -511,10 +560,20 @@ function dismissCreateError(): void {
                 :class="[userTable.row, 'cursor-pointer']"
                 @click="handleOpenOrder(order)"
               >
-                <td :class="[userTable.td, 'whitespace-nowrap font-mono font-bold']">
+                <td
+                  :class="[
+                    userTable.td,
+                    'whitespace-nowrap font-mono font-bold',
+                  ]"
+                >
                   {{ order.code }}
                 </td>
-                <td :class="[userTable.td, 'whitespace-nowrap font-mono text-xs text-cyber-muted']">
+                <td
+                  :class="[
+                    userTable.td,
+                    'whitespace-nowrap font-mono text-xs text-cyber-muted',
+                  ]"
+                >
                   {{ formatTopupTimestampVi(order.createdAt) }}
                 </td>
                 <td :class="[userTable.td, 'whitespace-nowrap']">
@@ -543,10 +602,20 @@ function dismissCreateError(): void {
                     Ghi chú: {{ order.note }}
                   </p>
                 </td>
-                <td :class="[userTable.td, 'whitespace-nowrap text-right font-mono font-bold text-cyber-cyan']">
+                <td
+                  :class="[
+                    userTable.td,
+                    'whitespace-nowrap text-right font-mono font-bold text-cyber-cyan',
+                  ]"
+                >
                   {{ formatVndVi(order.amountVnd) }}
                 </td>
-                <td :class="[userTable.td, 'whitespace-nowrap text-right font-mono text-xs font-bold text-cyber-success']">
+                <td
+                  :class="[
+                    userTable.td,
+                    'whitespace-nowrap text-right font-mono text-xs font-bold text-cyber-success',
+                  ]"
+                >
                   +{{ formatNumberVi(order.credits) }} CR
                 </td>
                 <td :class="[userTable.td, 'text-right']">

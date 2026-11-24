@@ -196,7 +196,7 @@ describe('Muse Video: TasksService.createMuseVideo', () => {
         return totalBytes;
       },
     };
-    const svc = new TasksService({}, {}, uploads, {}, {}, {}, {});
+    const svc = new TasksService({}, {}, uploads, {}, {}, {}, {}, {});
     svc.createPipelineTask = async (_userId, spec) => {
       calls.specs.push(spec);
       return { id: 't', pipeline: spec.pipeline, creditCost: spec.amount };

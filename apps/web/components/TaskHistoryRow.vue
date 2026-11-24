@@ -36,7 +36,7 @@ const formattedTime = computed(() => formatTaskTimestampVi(props.task.createdAt)
 const videoInfo = ref<Pick<TaskResultResponse, 'posterUrl' | 'durationSeconds'> | null>(null);
 const imageUrl = ref<string | null>(null);
 const posterFailed = ref(false);
-const isVideoTask = computed(() => props.task.pipeline === 'motion_control' || props.task.pipeline === 'motion_control_v2' || props.task.pipeline === 'veo3' || props.task.pipeline === 'muse_video');
+const isVideoTask = computed(() => props.task.pipeline === 'motion_control' || props.task.pipeline === 'motion_control_v2' || props.task.pipeline === 'veo3' || props.task.pipeline === 'muse_video' || props.task.pipeline === 'remove_watermark');
 const showThumb = computed(() => isSucceeded.value && !isExpired.value);
 const thumbUrl = computed(() =>
   posterFailed.value ? null : (videoInfo.value?.posterUrl ?? imageUrl.value),

@@ -252,7 +252,7 @@ describe('@flowxis/web — Story 1.4 Nuxt 4 mobile-first & API client', () => {
     assert.equal(getTierCapSeconds(pricing, 'Creator'), 20);
 
     const freeCatalog = buildAiFeatureCatalog(pricing, 'FREE');
-    assert.equal(freeCatalog.length, 7);
+    assert.equal(freeCatalog.length, 8);
 
     const faceSwap = freeCatalog.find((f) => f.id === 'face-swap');
     const bodyRetouch = freeCatalog.find((f) => f.id === 'body-retouch');

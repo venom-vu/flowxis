@@ -1,16 +1,22 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
-import { MOTION_MIN_TRIM_SECONDS, MUSE_VIDEO_DURATION_SECONDS, type AccountTier, type Task } from '@flowxis/contracts';
-import ImageUploader from '~/components/ImageUploader.vue';
-import TaskResultViewer from '~/components/TaskResultViewer.vue';
-import { useApiClient } from '~/composables/useApiClient';
-import { useAuthDialog } from '~/composables/useAuthDialog';
-import { useMotionControl } from '~/composables/useMotionControl';
-import { useVeo3 } from '~/composables/useVeo3';
-import Veo3Form from '~/components/Veo3Form.vue';
-import { useMuseVideo } from '~/composables/useMuseVideo';
-import MuseVideoForm from '~/components/MuseVideoForm.vue';
-import { usePricingConfig } from '~/composables/usePricingConfig';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
+import {
+  MOTION_MIN_TRIM_SECONDS,
+  MUSE_VIDEO_DURATION_SECONDS,
+  REMOVE_WATERMARK_PROMPT_MAX_LENGTH,
+  type AccountTier,
+  type Task,
+} from "@flowxis/contracts";
+import ImageUploader from "~/components/ImageUploader.vue";
+import TaskResultViewer from "~/components/TaskResultViewer.vue";
+import { useApiClient } from "~/composables/useApiClient";
+import { useAuthDialog } from "~/composables/useAuthDialog";
+import { useMotionControl } from "~/composables/useMotionControl";
+import { useVeo3 } from "~/composables/useVeo3";
+import Veo3Form from "~/components/Veo3Form.vue";
+import { useMuseVideo } from "~/composables/useMuseVideo";
+import MuseVideoForm from "~/components/MuseVideoForm.vue";
+import { usePricingConfig } from "~/composables/usePricingConfig";
 import {
   ApiErrorCode,
   INTENSITY_DEFAULT,
@@ -20,12 +26,12 @@ import {
   IntensitySchema,
   getIntensityLabelVi,
   resolveApiErrorMessageVi,
-} from '~/utils/api-client';
+} from "~/utils/api-client";
 import {
   calculateFeatureEstimatedCredits,
   formatNumberVi,
   type AiFeatureTool,
-} from '~/utils/catalog';
+} from "~/utils/catalog";
 
 const props = withDefaults(
   defineProps<{
@@ -35,7 +41,7 @@ const props = withDefaults(
     userBalance?: number | null;
   }>(),
   {
-    userTier: 'FREE',
+    userTier: "FREE",
     userBalance: null,
   },
 );
@@ -65,6 +71,7 @@ const motion = useMotionControl();
 const motionCharacterKey = motion.characterKey;
 const motionCapSeconds = motion.capSeconds;
 const motionSeconds = motion.seconds;
+const motionPrompt = motion.prompt;
 const motionInsufficientNoteVi = motion.insufficientNoteVi;
 const motionSubmitErrorVi = motion.submitErrorVi;
 const motionIsSubmitting = motion.isSubmitting;
@@ -110,7 +117,7 @@ const isSubmitting = ref<boolean>(false);
 const submitErrorVi = ref<string | null>(null);
 
 const intensityLabelVi = computed<string>(
-  () => getIntensityLabelVi(intensity.value) ?? 'Tự nhiên',
+  () => getIntensityLabelVi(intensity.value) ?? "Tự nhiên",
 );
 
 const isValidIntensity = computed<boolean>(
@@ -133,7 +140,10 @@ watch(
     veo.clearState();
     muse.clearState();
     if (nextFeature?.tierCapSeconds) {
-      selectedSeconds.value = Math.min(MOTION_MIN_TRIM_SECONDS, nextFeature.tierCapSeconds);
+      selectedSeconds.value = Math.min(
+        MOTION_MIN_TRIM_SECONDS,
+        nextFeature.tierCapSeconds,
+      );
     } else {
       selectedSeconds.value = 1;
     }
@@ -141,12 +151,43 @@ watch(
   { immediate: true },
 );
 
+function syncScrollLock(locked: boolean): void {
+  if (typeof document === "undefined") return;
+  const body = document.body;
+  const html = document.documentElement;
+  if (!body?.style) return;
+  if (body.dataset) {
+    if (locked) {
+      body.dataset.lockWorkspace = "1";
+    } else {
+      delete body.dataset.lockWorkspace;
+    }
+  }
+  const stillLocked = body.dataset
+    ? Boolean(
+        body.dataset.lockWorkspace ||
+        body.dataset.lockVietqr ||
+        body.dataset.lockAuth,
+      )
+    : locked;
+  const overflow = stillLocked ? "hidden" : "";
+  body.style.overflow = overflow;
+  if (html?.style) {
+    html.style.overflow = overflow;
+  }
+}
+
+watch(
+  () => Boolean(props.open && props.feature),
+  (isLocked) => {
+    syncScrollLock(isLocked);
+  },
+  { immediate: true },
+);
+
 watch(
   () => props.open,
   (isOpen) => {
-    if (typeof document !== 'undefined') {
-      document.body.style.overflow = isOpen ? 'hidden' : '';
-    }
     if (!isOpen) {
       intensity.value = INTENSITY_DEFAULT;
       uploadedKey.value = null;
@@ -159,7 +200,7 @@ watch(
       resetMotionState();
       veo.clearState();
       muse.clearState();
-      }
+    }
   },
   { immediate: true },
 );
@@ -170,35 +211,52 @@ watch(
   () => {
     submitErrorVi.value = null;
   },
-  { flush: 'sync' },
+  { flush: "sync" },
 );
 
 const anySubmitting = computed<boolean>(
-  () => isSubmitting.value || motionIsSubmitting.value || veoIsSubmitting.value || museIsSubmitting.value,
+  () =>
+    isSubmitting.value ||
+    motionIsSubmitting.value ||
+    veoIsSubmitting.value ||
+    museIsSubmitting.value,
 );
 
 // Task đang xếp hàng/chạy: khóa nút tạo để tránh tạo trùng.
 const isTaskWorking = computed<boolean>(
-  () => activeTask.value?.status === 'queued' || activeTask.value?.status === 'running',
+  () =>
+    activeTask.value?.status === "queued" ||
+    activeTask.value?.status === "running",
 );
 
 const isAuthenticated = computed<boolean>(() => {
-  return typeof props.userBalance === 'number';
+  return typeof props.userBalance === "number";
 });
 
 const isMotion = computed<boolean>(
-  () => props.feature?.id === 'motion-control' ||
-    props.feature?.id === 'motion-control-v2',
+  () =>
+    props.feature?.id === "motion-control" ||
+    props.feature?.id === "motion-control-v2" ||
+    props.feature?.id === "remove-watermark",
 );
-const isVeo3 = computed<boolean>(() => props.feature?.id === 'veo-3');
-const isMuseVideo = computed<boolean>(() => props.feature?.id === 'muse-video');
-const isMotionV2 = computed<boolean>(() => props.feature?.id === 'motion-control-v2');
+const isVeo3 = computed<boolean>(() => props.feature?.id === "veo-3");
+const isMuseVideo = computed<boolean>(() => props.feature?.id === "muse-video");
+const isRemoveWatermark = computed<boolean>(
+  () => props.feature?.id === "remove-watermark",
+);
+const motionVariant = computed<"v1" | "v2" | "watermark">(() =>
+  isRemoveWatermark.value
+    ? "watermark"
+    : props.feature?.id === "motion-control-v2"
+      ? "v2"
+      : "v1",
+);
 watch(
-  isMotionV2,
-  (v2) => {
-    motion.variant.value = v2 ? 'v2' : 'v1';
+  motionVariant,
+  (v) => {
+    motion.variant.value = v;
   },
-  { immediate: true, flush: 'sync' },
+  { immediate: true, flush: "sync" },
 );
 
 const estimatedCredits = computed<number>(() => {
@@ -210,15 +268,13 @@ const estimatedCredits = computed<number>(() => {
   }
   if (isVeo3.value) return veo.price.value;
   if (isMuseVideo.value) return muse.price.value;
-  return calculateFeatureEstimatedCredits(
-    props.feature,
-    selectedSeconds.value,
-  );
+  return calculateFeatureEstimatedCredits(props.feature, selectedSeconds.value);
 });
 
 const hasEnoughBalance = computed<boolean>(() => {
   if (isVeo3.value) return isAuthenticated.value && veo.hasEnoughBalance.value;
-  if (isMuseVideo.value) return isAuthenticated.value && muse.hasEnoughBalance.value;
+  if (isMuseVideo.value)
+    return isAuthenticated.value && muse.hasEnoughBalance.value;
   if (isMotion.value) {
     return (
       isAuthenticated.value &&
@@ -226,7 +282,7 @@ const hasEnoughBalance = computed<boolean>(() => {
       motion.hasEnoughBalance.value
     );
   }
-  if (!isAuthenticated.value || typeof props.userBalance !== 'number') {
+  if (!isAuthenticated.value || typeof props.userBalance !== "number") {
     return false;
   }
   return props.userBalance >= estimatedCredits.value;
@@ -253,13 +309,13 @@ const canSubmit = computed<boolean>(() => {
   if (!isAuthenticated.value || !hasEnoughBalance.value || isSubmitting.value) {
     return false;
   }
-  if (props.feature?.id === 'face-swap') {
+  if (props.feature?.id === "face-swap") {
     return Boolean(sourceKey.value && targetKey.value);
   }
-  if (props.feature?.id === 'outfit-change') {
+  if (props.feature?.id === "outfit-change") {
     return Boolean(modelKey.value && clothingKey.value);
   }
-  if (props.feature?.id === 'body-retouch') {
+  if (props.feature?.id === "body-retouch") {
     return Boolean(uploadedKey.value && isValidIntensity.value);
   }
   return Boolean(uploadedKey.value);
@@ -270,7 +326,7 @@ async function handleSubmit(): Promise<void> {
     return;
   }
 
-  if (props.feature.id === 'body-retouch' && !isValidIntensity.value) {
+  if (props.feature.id === "body-retouch" && !isValidIntensity.value) {
     submitErrorVi.value = resolveApiErrorMessageVi(
       ApiErrorCode.VALIDATION_FAILED,
     );
@@ -281,13 +337,12 @@ async function handleSubmit(): Promise<void> {
     return;
   }
 
-
   if (isVeo3.value) {
     const credits = veo.price.value;
     const task = await veo.submit();
     if (task) {
       activeTask.value = task;
-      emit('submit', {
+      emit("submit", {
         featureId: props.feature.id,
         seconds: 8,
         estimatedCredits: credits,
@@ -301,7 +356,7 @@ async function handleSubmit(): Promise<void> {
     const task = await muse.submit();
     if (task) {
       activeTask.value = task;
-      emit('submit', {
+      emit("submit", {
         featureId: props.feature.id,
         seconds: MUSE_VIDEO_DURATION_SECONDS,
         estimatedCredits: credits,
@@ -317,7 +372,7 @@ async function handleSubmit(): Promise<void> {
     const task = await motion.submit();
     if (task) {
       activeTask.value = task;
-      emit('submit', {
+      emit("submit", {
         featureId: props.feature.id,
         seconds,
         estimatedCredits: credits,
@@ -327,7 +382,7 @@ async function handleSubmit(): Promise<void> {
     return;
   }
 
-  if (props.feature.id === 'face-swap') {
+  if (props.feature.id === "face-swap") {
     isSubmitting.value = true;
     submitErrorVi.value = null;
     try {
@@ -337,7 +392,7 @@ async function handleSubmit(): Promise<void> {
       });
       activeTask.value = task;
       void refreshAll();
-      emit('submit', {
+      emit("submit", {
         featureId: props.feature.id,
         seconds: selectedSeconds.value,
         estimatedCredits: estimatedCredits.value,
@@ -349,7 +404,7 @@ async function handleSubmit(): Promise<void> {
     } finally {
       isSubmitting.value = false;
     }
-  } else if (props.feature.id === 'outfit-change') {
+  } else if (props.feature.id === "outfit-change") {
     isSubmitting.value = true;
     submitErrorVi.value = null;
     try {
@@ -359,7 +414,7 @@ async function handleSubmit(): Promise<void> {
       });
       activeTask.value = task;
       void refreshAll();
-      emit('submit', {
+      emit("submit", {
         featureId: props.feature.id,
         seconds: selectedSeconds.value,
         estimatedCredits: estimatedCredits.value,
@@ -371,7 +426,7 @@ async function handleSubmit(): Promise<void> {
     } finally {
       isSubmitting.value = false;
     }
-  } else if (props.feature.id === 'body-retouch') {
+  } else if (props.feature.id === "body-retouch") {
     isSubmitting.value = true;
     submitErrorVi.value = null;
     try {
@@ -382,7 +437,7 @@ async function handleSubmit(): Promise<void> {
       });
       activeTask.value = task;
       void refreshAll();
-      emit('submit', {
+      emit("submit", {
         featureId: props.feature.id,
         seconds: selectedSeconds.value,
         estimatedCredits: estimatedCredits.value,
@@ -395,7 +450,7 @@ async function handleSubmit(): Promise<void> {
       isSubmitting.value = false;
     }
   } else {
-    emit('submit', {
+    emit("submit", {
       featureId: props.feature.id,
       seconds: selectedSeconds.value,
       estimatedCredits: estimatedCredits.value,
@@ -413,24 +468,22 @@ function handleRetry(): void {
 }
 
 function handleKeydown(event: KeyboardEvent): void {
-  if (props.open && event.key === 'Escape') {
-    emit('close');
+  if (props.open && event.key === "Escape") {
+    emit("close");
   }
 }
 
 onMounted(() => {
-  if (typeof window !== 'undefined') {
-    window.addEventListener('keydown', handleKeydown);
+  if (typeof window !== "undefined") {
+    window.addEventListener("keydown", handleKeydown);
   }
 });
 
 onBeforeUnmount(() => {
-  if (typeof window !== 'undefined') {
-    window.removeEventListener('keydown', handleKeydown);
+  if (typeof window !== "undefined") {
+    window.removeEventListener("keydown", handleKeydown);
   }
-  if (typeof document !== 'undefined') {
-    document.body.style.overflow = '';
-  }
+  syncScrollLock(false);
 });
 </script>
 
@@ -442,10 +495,10 @@ onBeforeUnmount(() => {
     aria-modal="true"
     :aria-labelledby="`workspace-dialog-title-${feature.id}`"
     data-testid="feature-workspace-dialog"
-    class="fixed inset-0 !m-0 z-50 flex items-center justify-center bg-cyber-bg/80 p-3 backdrop-blur-sm sm:p-6"
+    class="fixed inset-0 !m-0 z-50 flex items-center justify-center overscroll-contain bg-cyber-bg/80 p-3 backdrop-blur-sm sm:p-6"
   >
     <div
-      class="relative max-h-[90dvh] w-full max-w-[980px] overflow-y-auto rounded-2xl border border-cyber-border bg-cyber-surface text-cyber-text shadow-2xl"
+      class="relative max-h-[90dvh] w-full max-w-[980px] overflow-y-auto overscroll-contain rounded-2xl border border-cyber-border bg-cyber-surface text-cyber-text shadow-2xl"
     >
       <!-- Header của Centered Dialog -->
       <div
@@ -475,8 +528,31 @@ onBeforeUnmount(() => {
 
         <div class="flex items-center gap-2">
           <NuxtLink
-            v-if="feature.id === 'face-swap' || feature.id === 'veo-3' || feature.id === 'muse-video' || feature.id === 'outfit-change' || feature.id === 'body-retouch' || isMotion"
-            :to="feature.id === 'veo-3' ? '/veo-3' : feature.id === 'muse-video' ? '/muse-video' : feature.id === 'body-retouch' ? '/body-retouch' : feature.id === 'motion-control' ? '/motion-control' : feature.id === 'motion-control-v2' ? '/motion-control-v2' : feature.id === 'outfit-change' ? '/outfit-change' : '/face-swap'"
+            v-if="
+              feature.id === 'face-swap' ||
+              feature.id === 'veo-3' ||
+              feature.id === 'muse-video' ||
+              feature.id === 'outfit-change' ||
+              feature.id === 'body-retouch' ||
+              isMotion
+            "
+            :to="
+              feature.id === 'veo-3'
+                ? '/veo-3'
+                : feature.id === 'muse-video'
+                  ? '/muse-video'
+                  : feature.id === 'body-retouch'
+                    ? '/body-retouch'
+                    : feature.id === 'motion-control'
+                      ? '/motion-control'
+                      : feature.id === 'motion-control-v2'
+                        ? '/motion-control-v2'
+                        : feature.id === 'remove-watermark'
+                          ? '/remove-watermark'
+                          : feature.id === 'outfit-change'
+                            ? '/outfit-change'
+                            : '/face-swap'
+            "
             data-testid="workspace-open-standalone-link"
             class="touch-target inline-flex min-h-[48px] items-center gap-1.5 rounded-xl border border-cyber-border bg-cyber-bg px-3 py-2 text-xs font-semibold text-cyber-muted transition hover:border-cyber-cyan hover:text-cyber-cyan"
             @click="emit('close')"
@@ -534,7 +610,9 @@ onBeforeUnmount(() => {
             data-testid="workspace-face-swap-inputs"
           >
             <!-- 1. Ảnh mặt nguồn -->
-            <div class="space-y-2.5 rounded-xl border border-cyber-border bg-cyber-bg/60 p-3 sm:p-3.5">
+            <div
+              class="space-y-2.5 rounded-xl border border-cyber-border bg-cyber-bg/60 p-3 sm:p-3.5"
+            >
               <div class="flex items-center gap-2">
                 <span
                   class="flex h-5 w-5 items-center justify-center rounded-md border border-cyber-cyan/40 bg-cyber-cyan/15 font-mono text-[11px] font-bold text-cyber-cyan"
@@ -554,7 +632,9 @@ onBeforeUnmount(() => {
             </div>
 
             <!-- 2. Ảnh đích -->
-            <div class="space-y-2.5 rounded-xl border border-cyber-border bg-cyber-bg/60 p-3 sm:p-3.5">
+            <div
+              class="space-y-2.5 rounded-xl border border-cyber-border bg-cyber-bg/60 p-3 sm:p-3.5"
+            >
               <div class="flex items-center gap-2">
                 <span
                   class="flex h-5 w-5 items-center justify-center rounded-md border border-cyber-violet/40 bg-cyber-violet/15 font-mono text-[11px] font-bold text-cyber-violet"
@@ -580,7 +660,9 @@ onBeforeUnmount(() => {
             class="space-y-3"
             data-testid="workspace-outfit-change-inputs"
           >
-            <div class="space-y-2.5 rounded-xl border border-cyber-border bg-cyber-bg/60 p-3 sm:p-3.5">
+            <div
+              class="space-y-2.5 rounded-xl border border-cyber-border bg-cyber-bg/60 p-3 sm:p-3.5"
+            >
               <div class="flex items-center gap-2">
                 <span
                   class="flex h-5 w-5 items-center justify-center rounded-md border border-cyber-cyan/40 bg-cyber-cyan/15 font-mono text-[11px] font-bold text-cyber-cyan"
@@ -599,7 +681,9 @@ onBeforeUnmount(() => {
               />
             </div>
 
-            <div class="space-y-2.5 rounded-xl border border-cyber-border bg-cyber-bg/60 p-3 sm:p-3.5">
+            <div
+              class="space-y-2.5 rounded-xl border border-cyber-border bg-cyber-bg/60 p-3 sm:p-3.5"
+            >
               <div class="flex items-center gap-2">
                 <span
                   class="flex h-5 w-5 items-center justify-center rounded-md border border-cyber-violet/40 bg-cyber-violet/15 font-mono text-[11px] font-bold text-cyber-violet"
@@ -621,7 +705,7 @@ onBeforeUnmount(() => {
 
           <!-- Các công cụ AI khác: Thành phần tải ảnh đơn dùng chung (Story 2.10) -->
           <div
-            v-else
+            v-else-if="!isRemoveWatermark"
             class="rounded-xl border border-cyber-border bg-cyber-bg/60 p-3 sm:p-3.5"
           >
             <div class="mb-2.5 flex items-start gap-2.5">
@@ -633,14 +717,16 @@ onBeforeUnmount(() => {
                 <p class="text-xs font-semibold text-cyber-text sm:text-sm">
                   Tải dữ liệu đầu vào
                 </p>
-                <p class="truncate text-[11px] text-cyber-muted sm:whitespace-normal sm:text-xs">
+                <p
+                  class="truncate text-[11px] text-cyber-muted sm:whitespace-normal sm:text-xs"
+                >
                   {{ feature.inputRequirementVi }}
                 </p>
               </div>
             </div>
 
             <ImageUploader
-              v-if="isMotion"
+              v-if="isMotion && !isRemoveWatermark"
               :key="`motion-char-${motionKey}`"
               v-model="motionCharacterKey"
               id-prefix="workspace-motion-character"
@@ -648,7 +734,7 @@ onBeforeUnmount(() => {
               description-vi="Ảnh toàn thân rõ dáng, JPG/PNG/WebP ≤ 10 MB"
             />
             <ImageUploader
-              v-else
+              v-else-if="!isRemoveWatermark"
               v-model="uploadedKey"
               id-prefix="workspace-input"
               :label-vi="
@@ -671,16 +757,23 @@ onBeforeUnmount(() => {
                 for="workspace-intensity-range"
                 class="flex items-center gap-2 text-xs font-semibold text-cyber-text sm:text-sm"
               >
-                <Icon name="lucide:sliders-horizontal" class="h-4 w-4 text-cyber-cyan" />
+                <Icon
+                  name="lucide:sliders-horizontal"
+                  class="h-4 w-4 text-cyber-cyan"
+                />
                 <span>Mức độ nâng ngực</span>
               </label>
               <span
                 data-testid="workspace-intensity-badge"
                 class="inline-flex items-center gap-1.5 rounded-full border border-cyber-cyan/40 bg-cyber-cyan/15 px-3 py-1 font-mono text-xs font-bold text-cyber-cyan"
               >
-                <span data-testid="workspace-intensity-value">Mức {{ intensity }}/{{ INTENSITY_MAX }}</span>
+                <span data-testid="workspace-intensity-value"
+                  >Mức {{ intensity }}/{{ INTENSITY_MAX }}</span
+                >
                 <span>•</span>
-                <span data-testid="workspace-intensity-label">{{ intensityLabelVi }}</span>
+                <span data-testid="workspace-intensity-label">{{
+                  intensityLabelVi
+                }}</span>
               </span>
             </div>
 
@@ -725,13 +818,23 @@ onBeforeUnmount(() => {
 
           <!-- Banner lỗi nếu có -->
           <div
-            v-if="submitErrorVi || motionSubmitErrorVi || veoSubmitErrorVi || museSubmitErrorVi"
+            v-if="
+              submitErrorVi ||
+              motionSubmitErrorVi ||
+              veoSubmitErrorVi ||
+              museSubmitErrorVi
+            "
             data-testid="workspace-submit-error-banner"
             role="alert"
             aria-live="assertive"
             class="rounded-xl border border-cyber-danger/40 bg-cyber-danger/10 p-3 text-xs text-cyber-danger"
           >
-            {{ submitErrorVi || motionSubmitErrorVi || veoSubmitErrorVi || museSubmitErrorVi }}
+            {{
+              submitErrorVi ||
+              motionSubmitErrorVi ||
+              veoSubmitErrorVi ||
+              museSubmitErrorVi
+            }}
           </div>
 
           <p
@@ -755,9 +858,15 @@ onBeforeUnmount(() => {
             data-testid="workspace-video-trimmer"
             class="min-w-0 space-y-2.5 rounded-xl border border-cyber-border bg-cyber-bg/60 p-3 sm:p-3.5"
           >
-            <p class="flex items-center gap-2 text-xs font-semibold text-cyber-text sm:text-sm">
+            <p
+              class="flex items-center gap-2 text-xs font-semibold text-cyber-text sm:text-sm"
+            >
               <Icon name="lucide:scissors" class="h-4 w-4 text-cyber-cyan" />
-              <span>Video mẫu và đoạn cắt (bước 1 giây)</span>
+              <span>{{
+                isRemoveWatermark
+                  ? "Video cần xử lý và đoạn cắt (bước 1 giây)"
+                  : "Video mẫu và đoạn cắt (bước 1 giây)"
+              }}</span>
             </p>
             <VideoTrimmer
               :key="`motion-video-${motionKey}`"
@@ -766,6 +875,31 @@ onBeforeUnmount(() => {
               :tier-name="userTier"
               @change="onMotionTrimChange"
             />
+            <div
+              v-if="isRemoveWatermark"
+              class="space-y-2 rounded-xl border border-cyber-border bg-cyber-bg/60 p-3 sm:p-3.5"
+            >
+              <label
+                for="workspace-watermark-prompt"
+                class="text-xs font-semibold text-cyber-text sm:text-sm"
+              >
+                Mô tả yêu cầu (Optional)
+              </label>
+              <textarea
+                id="workspace-watermark-prompt"
+                v-model="motionPrompt"
+                data-testid="workspace-watermark-prompt"
+                rows="5"
+                :maxlength="REMOVE_WATERMARK_PROMPT_MAX_LENGTH"
+                placeholder="Ví dụ: xóa logo ở góc phải và phụ đề phía dưới, giữ nguyên nhân vật. Để trống nếu muốn hệ thống tự xử lý."
+                class="w-full resize-y rounded-lg border border-cyber-border bg-cyber-surface p-3 text-sm text-cyber-text placeholder:text-cyber-muted focus:border-cyber-cyan focus:outline-none"
+              />
+              <p class="text-right font-mono text-[11px] text-cyber-muted">
+                {{ motionPrompt.length }}/{{
+                  REMOVE_WATERMARK_PROMPT_MAX_LENGTH
+                }}
+              </p>
+            </div>
             <p
               v-if="motionSeconds > 0"
               data-testid="workspace-motion-seconds"
@@ -814,15 +948,32 @@ onBeforeUnmount(() => {
               </span>
             </div>
           </div>
-          <p class="text-[11px] text-cyber-muted" data-testid="workspace-tos-note">
+          <p
+            class="text-[11px] text-cyber-muted"
+            data-testid="workspace-tos-note"
+          >
             Bằng việc tải lên, bạn xác nhận đủ 18 tuổi và đồng ý với
-            <NuxtLink to="/terms" target="_blank" rel="noopener" class="text-cyber-cyan underline">Điều khoản</NuxtLink>
+            <NuxtLink
+              to="/terms"
+              target="_blank"
+              rel="noopener"
+              class="text-cyber-cyan underline"
+              >Điều khoản</NuxtLink
+            >
             và
-            <NuxtLink to="/privacy" target="_blank" rel="noopener" class="text-cyber-cyan underline">Chính sách quyền riêng tư</NuxtLink>.
+            <NuxtLink
+              to="/privacy"
+              target="_blank"
+              rel="noopener"
+              class="text-cyber-cyan underline"
+              >Chính sách quyền riêng tư</NuxtLink
+            >.
           </p>
         </div>
 
-        <div class="flex shrink-0 flex-col items-stretch gap-2 sm:flex-row sm:items-center">
+        <div
+          class="flex shrink-0 flex-col items-stretch gap-2 sm:flex-row sm:items-center"
+        >
           <!-- Nút đăng nhập cho khách chưa đăng nhập -->
           <button
             v-if="!isAuthenticated"
@@ -861,9 +1012,9 @@ onBeforeUnmount(() => {
             <span>
               {{
                 anySubmitting
-                  ? 'Đang gửi yêu cầu...'
+                  ? "Đang gửi yêu cầu..."
                   : isTaskWorking
-                    ? 'Đang xử lý...'
+                    ? "Đang xử lý..."
                     : activeTask
                       ? `Tạo lại (${formatNumberVi(estimatedCredits)} CR)`
                       : `Tạo Tác Vụ AI (${formatNumberVi(estimatedCredits)} CR)`

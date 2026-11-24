@@ -361,8 +361,8 @@ export class TaskWorkerService implements OnModuleInit, OnModuleDestroy {
         return;
       }
       const value =
-        m.scale !== undefined && typeof v === "number"
-          ? String(Number((v * m.scale).toFixed(4)))
+        typeof v === "number" && (m.scale !== undefined || m.offset !== undefined)
+          ? String(Number((v * (m.scale ?? 1) + (m.offset ?? 0)).toFixed(4)))
           : String(v);
       paramNodes.push({
         nodeId: m.nodeId,

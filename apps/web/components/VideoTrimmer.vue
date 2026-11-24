@@ -1,14 +1,14 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, ref, watch } from "vue";
 import {
   getValidationReasonMessageVi,
   MAX_VIDEO_BYTES,
   MOTION_MIN_TRIM_SECONDS,
   type VideoMimeType,
-} from '@flowxis/contracts';
-import { useApiClient } from '~/composables/useApiClient';
-import { useUploadFlow } from '~/composables/useUploadFlow';
-import { formatFileSizeVi, validateVideoFile } from '~/utils/image-upload';
+} from "@flowxis/contracts";
+import { useApiClient } from "~/composables/useApiClient";
+import { useUploadFlow } from "~/composables/useUploadFlow";
+import { formatFileSizeVi, validateVideoFile } from "~/utils/image-upload";
 import {
   computeTrimLimits,
   defaultTrim,
@@ -17,7 +17,7 @@ import {
   moveStart,
   normalizeTrim,
   type TrimRange,
-} from '~/utils/video-trim';
+} from "~/utils/video-trim";
 
 const props = withDefaults(
   defineProps<{
@@ -27,7 +27,12 @@ const props = withDefaults(
     disabled?: boolean;
     idPrefix?: string;
   }>(),
-  { capSeconds: null, tierName: null, disabled: false, idPrefix: 'video-trimmer' },
+  {
+    capSeconds: null,
+    tierName: null,
+    disabled: false,
+    idPrefix: "video-trimmer",
+  },
 );
 
 const emit = defineEmits<{
@@ -46,8 +51,8 @@ const { client } = useApiClient();
 const flow = useUploadFlow(client);
 const uploadProgress = flow.progress;
 
-type Status = 'idle' | 'validating' | 'uploading' | 'ready' | 'error';
-const status = ref<Status>('idle');
+type Status = "idle" | "validating" | "uploading" | "ready" | "error";
+const status = ref<Status>("idle");
 const inputRef = ref<HTMLInputElement | null>(null);
 const trackRef = ref<HTMLElement | null>(null);
 const videoElRef = ref<HTMLVideoElement | null>(null);
@@ -55,22 +60,28 @@ const videoElRef = ref<HTMLVideoElement | null>(null);
 const currentFile = ref<File | null>(null);
 const previewUrl = ref<string | null>(null);
 const clientDuration = ref(0);
-const validatedMime = ref<string>('video/mp4');
+const validatedMime = ref<string>("video/mp4");
 const serverDuration = ref<number | null>(null);
 const confirmedKey = ref<string | null>(null);
 const errorMessageVi = ref<string | null>(null);
 const range = ref<TrimRange>({ start: 0, end: 0 });
 const isPortrait = ref(false);
-const activeHandle = ref<'start' | 'end' | null>(null);
+const activeHandle = ref<"start" | "end" | null>(null);
 let unmounted = false;
 
-const durationSeconds = computed(() => serverDuration.value ?? clientDuration.value);
-const limits = computed(() => computeTrimLimits(durationSeconds.value, props.capSeconds));
-const hasVideo = computed(() => status.value !== 'idle' && currentFile.value !== null);
+const durationSeconds = computed(
+  () => serverDuration.value ?? clientDuration.value,
+);
+const limits = computed(() =>
+  computeTrimLimits(durationSeconds.value, props.capSeconds),
+);
+const hasVideo = computed(
+  () => status.value !== "idle" && currentFile.value !== null,
+);
 const selectedLength = computed(() => range.value.end - range.value.start);
 const capLimited = computed(
   () =>
-    typeof props.capSeconds === 'number' &&
+    typeof props.capSeconds === "number" &&
     props.capSeconds > 0 &&
     (Math.floor(durationSeconds.value) > props.capSeconds ||
       props.capSeconds < MOTION_MIN_TRIM_SECONDS),
@@ -78,19 +89,23 @@ const capLimited = computed(
 const total = computed(() => Math.max(1, limits.value.total));
 const startPct = computed(() => (range.value.start / total.value) * 100);
 const endPct = computed(() => (range.value.end / total.value) * 100);
-const isBusy = computed(() => status.value === 'uploading' || status.value === 'validating');
+const isBusy = computed(
+  () => status.value === "uploading" || status.value === "validating",
+);
 
 function revokePreview(): void {
-  if (previewUrl.value && typeof URL !== 'undefined') {
+  if (previewUrl.value && typeof URL !== "undefined") {
     URL.revokeObjectURL(previewUrl.value);
   }
   previewUrl.value = null;
 }
 
 function emitChange(): void {
-  emit('change', {
+  emit("change", {
     videoKey:
-      status.value === 'ready' && limits.value.usable ? confirmedKey.value : null,
+      status.value === "ready" && limits.value.usable
+        ? confirmedKey.value
+        : null,
     trimStart: range.value.start,
     trimEnd: range.value.end,
     durationSeconds: Math.floor(durationSeconds.value),
@@ -101,7 +116,7 @@ function applyRange(next: TrimRange): void {
   if (next.start === range.value.start && next.end === range.value.end) return;
   range.value = next;
   if (videoElRef.value) videoElRef.value.currentTime = next.start;
-  if (status.value === 'ready' && limits.value.usable) emitChange();
+  if (status.value === "ready" && limits.value.usable) emitChange();
 }
 
 // Cap hoặc độ dài server đổi: thu hẹp đoạn nếu cần.
@@ -124,8 +139,13 @@ function reset(): void {
   clientDuration.value = 0;
   errorMessageVi.value = null;
   range.value = { start: 0, end: 0 };
-  status.value = 'idle';
-  emit('change', { videoKey: null, trimStart: 0, trimEnd: 0, durationSeconds: 0 });
+  status.value = "idle";
+  emit("change", {
+    videoKey: null,
+    trimStart: 0,
+    trimEnd: 0,
+    durationSeconds: 0,
+  });
 }
 
 async function handleFileSelect(file: File): Promise<void> {
@@ -136,28 +156,39 @@ async function handleFileSelect(file: File): Promise<void> {
   serverDuration.value = null;
   errorMessageVi.value = null;
   isPortrait.value = false;
-  emit('change', { videoKey: null, trimStart: 0, trimEnd: 0, durationSeconds: 0 });
+  emit("change", {
+    videoKey: null,
+    trimStart: 0,
+    trimEnd: 0,
+    durationSeconds: 0,
+  });
 
-  status.value = 'validating';
+  status.value = "validating";
   const validation = await validateVideoFile(file);
   if (unmounted || currentFile.value !== file) return;
   if (!validation.valid) {
     currentFile.value = null;
-    status.value = 'error';
+    status.value = "error";
     errorMessageVi.value = validation.errorVi;
-    emit('error', validation.errorVi);
+    emit("error", validation.errorVi);
     return;
   }
 
   clientDuration.value = validation.durationSeconds;
   validatedMime.value = validation.mimeType;
-  range.value = defaultTrim(computeTrimLimits(validation.durationSeconds, props.capSeconds));
-  if (typeof URL !== 'undefined') previewUrl.value = URL.createObjectURL(file);
+  range.value = defaultTrim(
+    computeTrimLimits(validation.durationSeconds, props.capSeconds),
+  );
+  if (typeof URL !== "undefined") previewUrl.value = URL.createObjectURL(file);
   await startUpload(file, validation.mimeType, validation.sizeBytes);
 }
 
-async function startUpload(file: File, mimeType: string, sizeBytes: number): Promise<void> {
-  status.value = 'uploading';
+async function startUpload(
+  file: File,
+  mimeType: string,
+  sizeBytes: number,
+): Promise<void> {
+  status.value = "uploading";
   errorMessageVi.value = null;
   const result = await flow.start({
     file,
@@ -165,22 +196,22 @@ async function startUpload(file: File, mimeType: string, sizeBytes: number): Pro
     confirm: (key, opts) => client.confirmVideoUpload(key, opts),
   });
   if (unmounted || currentFile.value !== file) return;
-  if (result.status === 'aborted') {
+  if (result.status === "aborted") {
     reset();
     return;
   }
-  if (result.status === 'error') {
-    status.value = 'error';
+  if (result.status === "error") {
+    status.value = "error";
     errorMessageVi.value = result.messageVi;
-    emit('error', result.messageVi);
+    emit("error", result.messageVi);
     return;
   }
   serverDuration.value = result.data.video.durationSeconds;
   if (Math.floor(result.data.video.durationSeconds) < MOTION_MIN_TRIM_SECONDS) {
     confirmedKey.value = null;
-    status.value = 'error';
-    errorMessageVi.value = getValidationReasonMessageVi('VIDEO_TOO_SHORT');
-    emit('error', errorMessageVi.value);
+    status.value = "error";
+    errorMessageVi.value = getValidationReasonMessageVi("VIDEO_TOO_SHORT");
+    emit("error", errorMessageVi.value);
     return;
   }
   confirmedKey.value = result.data.key;
@@ -188,7 +219,7 @@ async function startUpload(file: File, mimeType: string, sizeBytes: number): Pro
     isPortrait.value = result.data.video.height > result.data.video.width;
   }
   range.value = normalizeTrim(range.value, limits.value);
-  status.value = 'ready';
+  status.value = "ready";
   emitChange();
 }
 
@@ -203,27 +234,31 @@ function onFileInputChange(event: Event): void {
   const target = event.target as HTMLInputElement;
   const file = target.files?.[0];
   if (file) void handleFileSelect(file);
-  target.value = '';
+  target.value = "";
 }
 
 function onLoadedMetadata(): void {
   const v = videoElRef.value;
   if (!v) return;
-  if (v.videoWidth && v.videoHeight) isPortrait.value = v.videoHeight > v.videoWidth;
+  if (v.videoWidth && v.videoHeight)
+    isPortrait.value = v.videoHeight > v.videoWidth;
   v.currentTime = range.value.start;
 }
 
 function onTimeUpdate(): void {
   const v = videoElRef.value;
   if (!v) return;
-  if (v.currentTime >= range.value.end || v.currentTime < range.value.start - 0.25) {
+  if (
+    v.currentTime >= range.value.end ||
+    v.currentTime < range.value.start - 0.25
+  ) {
     v.currentTime = range.value.start;
   }
 }
 
-function setHandle(which: 'start' | 'end', value: number): void {
+function setHandle(which: "start" | "end", value: number): void {
   applyRange(
-    which === 'start'
+    which === "start"
       ? moveStart(range.value, value, limits.value)
       : moveEnd(range.value, value, limits.value),
   );
@@ -238,7 +273,7 @@ function valueFromPointer(clientX: number): number {
   return Math.round(ratio * total.value);
 }
 
-function onPointerDown(which: 'start' | 'end', event: PointerEvent): void {
+function onPointerDown(which: "start" | "end", event: PointerEvent): void {
   if (props.disabled) return;
   activeHandle.value = which;
   const el = event.currentTarget as HTMLElement;
@@ -246,7 +281,7 @@ function onPointerDown(which: 'start' | 'end', event: PointerEvent): void {
   el.setPointerCapture?.(event.pointerId);
 }
 
-function onPointerMove(which: 'start' | 'end', event: PointerEvent): void {
+function onPointerMove(which: "start" | "end", event: PointerEvent): void {
   if (activeHandle.value !== which) return;
   setHandle(which, valueFromPointer(event.clientX));
 }
@@ -255,12 +290,14 @@ function onPointerUp(): void {
   activeHandle.value = null;
 }
 
-function onKeydown(which: 'start' | 'end', event: KeyboardEvent): void {
+function onKeydown(which: "start" | "end", event: KeyboardEvent): void {
   if (props.disabled) return;
-  const current = which === 'start' ? range.value.start : range.value.end;
+  const current = which === "start" ? range.value.start : range.value.end;
   let next: number | null = null;
-  if (event.key === 'ArrowLeft' || event.key === 'ArrowDown') next = current - 1;
-  else if (event.key === 'ArrowRight' || event.key === 'ArrowUp') next = current + 1;
+  if (event.key === "ArrowLeft" || event.key === "ArrowDown")
+    next = current - 1;
+  else if (event.key === "ArrowRight" || event.key === "ArrowUp")
+    next = current + 1;
   if (next === null) return;
   event.preventDefault();
   setHandle(which, next);
@@ -293,12 +330,17 @@ onBeforeUnmount(() => {
       v-if="status === 'idle' || (status === 'validating' && !currentFile)"
       class="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-cyber-border bg-cyber-bg/60 p-3.5 text-center sm:p-4"
     >
-      <div class="flex h-9 w-9 items-center justify-center rounded-lg border border-cyber-border/80 bg-cyber-surface/90 text-cyber-violet">
+      <div
+        class="flex h-9 w-9 items-center justify-center rounded-lg border border-cyber-border/80 bg-cyber-surface/90 text-cyber-violet"
+      >
         <Icon name="lucide:video" class="h-5 w-5" />
       </div>
-      <p class="mt-2 text-xs font-semibold text-cyber-text sm:text-sm">Tải video mẫu lên</p>
+      <p class="mt-2 text-xs font-semibold text-cyber-text sm:text-sm">
+        Tải video mẫu lên
+      </p>
       <p class="mt-0.5 text-[11px] text-cyber-muted sm:text-xs">
-        MP4 hoặc MOV, tối đa {{ MAX_VIDEO_BYTES / 1024 / 1024 }} MB, dài ít nhất {{ MOTION_MIN_TRIM_SECONDS }} giây
+        MP4 hoặc MOV, tối đa {{ MAX_VIDEO_BYTES / 1024 / 1024 }} MB, dài ít nhất
+        {{ MOTION_MIN_TRIM_SECONDS }} giây
       </p>
       <button
         type="button"
@@ -331,14 +373,19 @@ onBeforeUnmount(() => {
       </div>
     </div>
 
-    <div
-      v-else-if="hasVideo"
-      class="space-y-3.5"
-    >
+    <div v-else-if="hasVideo" class="space-y-3.5">
       <div class="flex items-center justify-between gap-3 min-w-0">
         <div class="min-w-0 flex-1 space-y-0.5">
-          <p class="truncate text-xs font-medium text-cyber-text" :title="currentFile?.name">{{ currentFile?.name }}</p>
-          <p class="font-mono text-[11px] text-cyber-muted" data-testid="video-file-size">
+          <p
+            class="truncate text-xs font-medium text-cyber-text"
+            :title="currentFile?.name"
+          >
+            {{ currentFile?.name }}
+          </p>
+          <p
+            class="font-mono text-[11px] text-cyber-muted"
+            data-testid="video-file-size"
+          >
             {{ formatFileSizeVi(currentFile?.size ?? 0) }}
           </p>
         </div>
@@ -354,10 +401,7 @@ onBeforeUnmount(() => {
             <Icon name="lucide:x" class="h-3.5 w-3.5" />
             <span>Hủy</span>
           </button>
-          <div
-            v-else-if="status === 'ready'"
-            class="flex items-center gap-1.5"
-          >
+          <div v-else-if="status === 'ready'" class="flex items-center gap-1.5">
             <button
               type="button"
               data-testid="video-change-button"
@@ -365,7 +409,10 @@ onBeforeUnmount(() => {
               class="touch-target inline-flex shrink-0 min-h-[48px] items-center justify-center gap-1.5 rounded-xl border border-cyber-violet/50 bg-cyber-violet/15 px-3 py-1.5 text-xs font-semibold text-cyber-text transition hover:bg-cyber-violet/25 disabled:opacity-50"
               @click="openPicker"
             >
-              <Icon name="lucide:refresh-cw" class="h-3.5 w-3.5 text-cyber-cyan" />
+              <Icon
+                name="lucide:refresh-cw"
+                class="h-3.5 w-3.5 text-cyber-cyan"
+              />
               <span>Đổi video</span>
             </button>
             <button
@@ -387,11 +434,19 @@ onBeforeUnmount(() => {
         class="space-y-1"
         data-testid="video-uploading-state"
       >
-        <div class="flex items-center justify-between font-mono text-[11px] text-cyber-muted">
-          <span>{{ status === 'validating' ? 'Đang kiểm tra video...' : 'Đang tải lên máy chủ...' }}</span>
+        <div
+          class="flex items-center justify-between font-mono text-[11px] text-cyber-muted"
+        >
+          <span>{{
+            status === "validating"
+              ? "Đang kiểm tra video..."
+              : "Đang tải lên máy chủ..."
+          }}</span>
           <span class="font-bold text-cyber-cyan">{{ uploadProgress }}%</span>
         </div>
-        <div class="h-1.5 w-full overflow-hidden rounded-full border border-cyber-border bg-cyber-surface">
+        <div
+          class="h-1.5 w-full overflow-hidden rounded-full border border-cyber-border bg-cyber-surface"
+        >
           <div
             data-testid="video-progress-bar"
             role="progressbar"
@@ -405,8 +460,16 @@ onBeforeUnmount(() => {
         </div>
       </div>
 
-      <div v-else-if="status === 'error'" data-testid="video-upload-error" class="space-y-3">
-        <ApiErrorBanner :message-vi="errorMessageVi" @retry="handleRetry" @dismiss="reset" />
+      <div
+        v-else-if="status === 'error'"
+        data-testid="video-upload-error"
+        class="space-y-3"
+      >
+        <ApiErrorBanner
+          :message-vi="errorMessageVi"
+          @retry="handleRetry"
+          @dismiss="reset"
+        />
       </div>
 
       <div
@@ -441,24 +504,42 @@ onBeforeUnmount(() => {
       <!-- Thanh Trim hai tay cầm -->
       <div class="space-y-2" data-testid="video-trim-bar">
         <div class="px-6">
-          <div ref="trackRef" class="relative h-11 w-full touch-none select-none">
-            <div class="absolute left-0 right-0 top-1/2 h-1.5 -translate-y-1/2 rounded-full border border-cyber-border bg-cyber-surface" />
+          <div
+            ref="trackRef"
+            class="relative h-11 w-full touch-none select-none"
+          >
+            <div
+              class="absolute left-0 right-0 top-1/2 h-1.5 -translate-y-1/2 rounded-full border border-cyber-border bg-cyber-surface"
+            />
             <div
               data-testid="video-trim-range"
               class="absolute top-1/2 h-1.5 -translate-y-1/2 rounded-full bg-gradient-to-r from-cyber-violet to-cyber-cyan"
-              :style="{ left: `${startPct}%`, width: `${Math.max(0, endPct - startPct)}%` }"
+              :style="{
+                left: `${startPct}%`,
+                width: `${Math.max(0, endPct - startPct)}%`,
+              }"
             />
             <div
-              v-for="which in (['start', 'end'] as const)"
+              v-for="which in ['start', 'end'] as const"
               :key="which"
               role="slider"
               tabindex="0"
               :data-testid="`video-handle-${which}`"
-              :aria-label="which === 'start' ? 'Điểm bắt đầu video' : 'Điểm kết thúc video'"
-              :aria-valuemin="which === 'start' ? 0 : range.start + MOTION_MIN_TRIM_SECONDS"
-              :aria-valuemax="which === 'start' ? range.end - MOTION_MIN_TRIM_SECONDS : limits.total"
+              :aria-label="
+                which === 'start' ? 'Điểm bắt đầu video' : 'Điểm kết thúc video'
+              "
+              :aria-valuemin="
+                which === 'start' ? 0 : range.start + MOTION_MIN_TRIM_SECONDS
+              "
+              :aria-valuemax="
+                which === 'start'
+                  ? range.end - MOTION_MIN_TRIM_SECONDS
+                  : limits.total
+              "
               :aria-valuenow="which === 'start' ? range.start : range.end"
-              :aria-valuetext="formatClock(which === 'start' ? range.start : range.end)"
+              :aria-valuetext="
+                formatClock(which === 'start' ? range.start : range.end)
+              "
               class="absolute top-1/2 flex h-12 w-12 -translate-x-1/2 -translate-y-1/2 cursor-grab items-center justify-center rounded-full outline-none active:cursor-grabbing"
               :style="{ left: `${which === 'start' ? startPct : endPct}%` }"
               @pointerdown.prevent="onPointerDown(which, $event)"
@@ -469,28 +550,47 @@ onBeforeUnmount(() => {
             >
               <span
                 class="block h-5 w-5 rounded-full border-2 border-cyber-cyan bg-cyber-surface transition"
-                :class="activeHandle === which ? 'shadow-[0_0_14px_rgba(34,211,238,0.8)]' : ''"
+                :class="
+                  activeHandle === which
+                    ? 'shadow-[0_0_14px_rgba(34,211,238,0.8)]'
+                    : ''
+                "
               />
             </div>
           </div>
         </div>
 
         <div class="grid grid-cols-3 gap-2 text-center font-mono text-xs">
-          <div class="rounded-lg border border-cyber-border bg-cyber-bg/60 px-2 py-1.5">
+          <div
+            class="rounded-lg border border-cyber-border bg-cyber-bg/60 px-2 py-1.5"
+          >
             <p class="text-[10px] text-cyber-muted">Bắt đầu</p>
-            <p class="font-bold text-cyber-text" data-testid="video-trim-start">{{ formatClock(range.start) }}</p>
+            <p class="font-bold text-cyber-text" data-testid="video-trim-start">
+              {{ formatClock(range.start) }}
+            </p>
           </div>
-          <div class="rounded-lg border border-cyber-border bg-cyber-bg/60 px-2 py-1.5">
+          <div
+            class="rounded-lg border border-cyber-border bg-cyber-bg/60 px-2 py-1.5"
+          >
             <p class="text-[10px] text-cyber-muted">Kết thúc</p>
-            <p class="font-bold text-cyber-text" data-testid="video-trim-end">{{ formatClock(range.end) }}</p>
+            <p class="font-bold text-cyber-text" data-testid="video-trim-end">
+              {{ formatClock(range.end) }}
+            </p>
           </div>
-          <div class="rounded-lg border border-cyber-cyan/40 bg-cyber-cyan/10 px-2 py-1.5">
+          <div
+            class="rounded-lg border border-cyber-cyan/40 bg-cyber-cyan/10 px-2 py-1.5"
+          >
             <p class="text-[10px] text-cyber-muted">Độ dài</p>
-            <p class="font-bold text-cyber-cyan" data-testid="video-trim-length">{{ selectedLength }} giây</p>
+            <p
+              class="font-bold text-cyber-cyan"
+              data-testid="video-trim-length"
+            >
+              {{ selectedLength }} giây
+            </p>
           </div>
         </div>
 
-        <p
+        <!-- <p
           v-if="capLimited"
           data-testid="video-cap-notice"
           class="flex flex-wrap items-center gap-x-2 text-xs text-cyber-warning"
@@ -503,7 +603,7 @@ onBeforeUnmount(() => {
           >
             Nâng cấp
           </NuxtLink>
-        </p>
+        </p> -->
       </div>
     </div>
   </div>

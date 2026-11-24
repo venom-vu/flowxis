@@ -343,4 +343,23 @@ describe('Base Form UI & sửa lỗi vỡ giao diện', () => {
     assert.match(adminDaily, /:x-tick-values="xTickValues"/);
     assert.match(adminDaily, /:adaptive-x-axis-ticks="true"/);
   });
+
+  it('Khóa cuộn nền khi mở dialog: main.css dùng overflow-x: clip trên html/body, khóa html+body khi có dialog và các dialog có overscroll-contain', () => {
+    const mainCss = fs.readFileSync(path.join(webRoot, 'assets/css/main.css'), 'utf8');
+    assert.match(mainCss, /html,\s*body\s*\{[^}]*overflow-x:\s*clip/);
+    assert.match(mainCss, /html:has\(\[role='dialog'\]\[aria-modal='true'\]\)/);
+    assert.match(mainCss, /body:has\(\[role='dialog'\]\[aria-modal='true'\]\)/);
+    assert.match(mainCss, /overflow:\s*hidden\s*!important/);
+
+    for (const rel of [
+      'components/FeatureWorkspaceDialog.vue',
+      'components/VietQRModal.vue',
+      'components/AuthDialog.vue',
+    ]) {
+      const sfc = fs.readFileSync(path.join(webRoot, rel), 'utf8');
+      assert.match(sfc, /syncScrollLock/, `${rel} phải khóa cuộn qua syncScrollLock`);
+      assert.match(sfc, /document\.documentElement/, `${rel} phải khóa cả html (documentElement)`);
+      assert.match(sfc, /\boverscroll-contain\b/, `${rel} phải chặn scroll chaining bằng overscroll-contain`);
+    }
+  });
 });

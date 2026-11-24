@@ -58,7 +58,7 @@ const {
           <Icon name="lucide:film" class="h-6 w-6" />
         </span>
         <div class="space-y-1">
-          <h1 class="font-display text-lg font-bold sm:text-2xl">Veo 3 Tạo Video AI</h1>
+          <h1 class="font-display text-lg font-bold sm:text-2xl">Tạo Video Với Veo 3 AI</h1>
           <p class="text-xs text-cyber-muted sm:text-sm">
             Tạo video 8 giây có âm thanh từ mô tả, một ảnh hoặc khung hình đầu và cuối.
           </p>

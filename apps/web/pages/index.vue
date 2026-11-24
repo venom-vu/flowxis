@@ -47,9 +47,14 @@ const filteredFeatures = computed<AiFeatureTool[]>(() => {
   const rawKeyword = searchKeyword.value.trim();
   const normalizedKeyword = normalizeTextVi(rawKeyword);
   return features.value.filter((tool) => {
+    const selected = FEATURE_CATEGORIES.find(
+      (cat) => cat.id === selectedCategory.value,
+    );
     const matchesCategory =
       selectedCategory.value === "all" ||
-      tool.category === selectedCategory.value;
+      (selectedCategory.value === "image"
+        ? tool.category === "image"
+        : tool.categoryLabelVi === selected?.labelVi);
     if (!matchesCategory) {
       return false;
     }

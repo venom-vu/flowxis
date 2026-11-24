@@ -22,6 +22,11 @@ import {
   type MotionCreateRequest,
   type MotionV2CreateRequest,
   type MotionV2CreateResponse,
+  type RemoveWatermarkCreateRequest,
+  type RemoveWatermarkCreateResponse,
+  REMOVE_WATERMARK_MIN_SECONDS,
+  removeWatermarkPrice,
+  removeWatermarkCapSeconds,
   type ValidationReason,
   MOTION_MIN_TRIM_SECONDS,
   MOTION_ASPECT_RATIO_DEFAULT,
@@ -34,6 +39,7 @@ import {
   type TaskListQuery,
   type TaskListResponse,
   type TaskResultResponse,
+  type TaskPipeline,
   type TaskStatus,
   type TierSnapshot,
   type TaskResultInput,
@@ -59,6 +65,7 @@ import { RedisService } from '../../infra/redis.service.js';
 import { assertValidTransition, isTerminal } from './task-transitions.js';
 import { AccountLockedException } from '../auth/guards/account-locked.guard.js';
 import { STORAGE_PORT, type StoragePort } from '../../ports/index.js';
+import { RealtimeService } from '../realtime/realtime.service.js';
 import { PipelinesService } from '../pipelines/pipelines.service.js';
 import { UploadsService } from '../storage/uploads.service.js';
 import { PRICING_CONFIG, tierFromPack } from '../wallet/tier.js';
@@ -111,6 +118,7 @@ const INPUT_DISPLAY_ORDER: Readonly<Record<string, readonly string[]>> = {
   body_retouch: ['imageKey'],
   motion_control: ['characterKey', 'videoKey'],
   motion_control_v2: ['characterKey', 'videoKey'],
+  remove_watermark: ['videoKey'],
   veo3: ['imageKey', 'firstFrameKey', 'lastFrameKey'],
   muse_video: Array.from({ length: MUSE_VIDEO_MAX_IMAGES }, (_, i) => `imageKey${i}`),
 };
@@ -158,6 +166,7 @@ export class TasksService {
     private readonly uploads: UploadsService,
     @InjectQueue(TASKS_QUEUE) private readonly queue: Queue,
     private readonly redis: RedisService,
+    private readonly realtime: RealtimeService,
     private readonly pipelines: PipelinesService,
     @Inject(STORAGE_PORT) private readonly storage: StoragePort,
   ) {}
@@ -191,7 +200,7 @@ export class TasksService {
     }
 
     const result = await this.prisma.$transaction(async (tx) => {
-      const rows = await tx.$queryRaw<Array<{ id: string; user_id: string }>>`
+      const rows = await tx.$queryRaw<Array<{ id: string; user_id: string; pipeline: string }>>`
         UPDATE tasks
         SET status = ${to}, reason_code = ${reasonCode ?? null}, result_key = ${resultKey}, updated_at = now(),
           finished_at = CASE WHEN ${terminal}::boolean THEN now() ELSE finished_at END,
@@ -202,7 +211,7 @@ export class TasksService {
           rh_orphan_until = CASE WHEN ${orphanMs}::int IS NOT NULL
             THEN now() + (${orphanMs}::int * interval '1 millisecond') ELSE rh_orphan_until END
         WHERE id = ${taskId}::uuid AND status = ${from}
-        RETURNING id, user_id`;
+        RETURNING id, user_id, pipeline`;
       if (rows.length === 0) return { applied: false };
       if (resultKey !== null && !resultKey.startsWith(`out/${rows[0].user_id}/`)) {
         throw new Error('resultKey không thuộc chủ Task');
@@ -211,8 +220,17 @@ export class TasksService {
       else if (to === 'failed' || to === 'timed_out' || to === 'cancelled') {
         await this.wallet.release(tx, taskId);
       }
-      return { applied: true };
+      return { applied: true, userId: rows[0].user_id, pipeline: rows[0].pipeline };
     });
+    if (result.applied && result.userId) {
+      this.realtime.publish(result.userId, {
+        type: 'task',
+        taskId,
+        pipeline: result.pipeline as TaskPipeline,
+        status: to,
+        reasonCode: reasonCode ?? null,
+      });
+    }
     if (result.applied && isTerminal(to)) {
       // Chỉ là gợi ý nên không chờ: Redis treo không được làm trễ phản hồi sau khi DB đã commit.
       void this.redis.client.set(`task:terminal:${taskId}`, '1', 'EX', 30, 'NX').catch(() => {});
@@ -736,6 +754,39 @@ export class TasksService {
     return task as MotionV2CreateResponse;
   }
 
+  /** Xóa watermark/logo/phụ đề: chỉ video đã cắt; giá = đơn giá × số giây; Cap = min(giới hạn chức năng, Cap Tier). */
+  async createRemoveWatermark(userId: string, req: RemoveWatermarkCreateRequest): Promise<RemoveWatermarkCreateResponse> {
+    const { videoKey, trimStart, trimEnd } = req;
+    const prompt = (req.prompt ?? '').trim();
+    if (!Number.isInteger(trimStart) || !Number.isInteger(trimEnd)) {
+      throw this.trimError('TRIM_NOT_WHOLE_SECOND');
+    }
+    const durationSeconds = await this.uploads.getConfirmedVideoDuration(userId, videoKey);
+    if (durationSeconds === null) {
+      throw new BadRequestException({
+        code: ApiErrorCode.VALIDATION_FAILED,
+        message: getApiErrorMessageVi(ApiErrorCode.VALIDATION_FAILED),
+      });
+    }
+    if (trimStart < 0 || trimEnd > durationSeconds) throw this.trimError('TRIM_OUT_OF_VIDEO');
+    const seconds = trimEnd - trimStart;
+    if (seconds < REMOVE_WATERMARK_MIN_SECONDS) throw this.trimError('TRIM_TOO_SHORT');
+    const price = removeWatermarkPrice(seconds);
+    const task = await this.createPipelineTask(userId, {
+      pipeline: 'remove_watermark',
+      amount: price,
+      inputKeys: { videoKey },
+      params: { trimStart, trimEnd, seconds, price, ...(prompt ? { prompt } : {}) },
+      keysVerified: true,
+      // Giới hạn riêng của chức năng (không theo Cap Tier); kiểm tra trong transaction để rollback cả HOLD.
+      postHold: () => {
+        const cap = removeWatermarkCapSeconds();
+        if (seconds > cap) throw this.trimError('TRIM_EXCEEDS_CAP', cap);
+      },
+    });
+    return { ...task, pipeline: 'remove_watermark', price } as RemoveWatermarkCreateResponse;
+  }
+
   /** Veo 3: giá theo độ phân giải; số ảnh đầu vào theo chế độ (0-2); luôn 8 giây. */
   async createVeo3(userId: string, req: Veo3CreateRequest): Promise<Veo3CreateResponse> {
     // `req` đã qua Veo3CreateRequestSchema ở controller; không parse lại.
@@ -854,7 +905,7 @@ export class TasksService {
   private async createPipelineTask(
     userId: string,
     spec: {
-      pipeline: 'face_swap' | 'outfit_change' | 'body_retouch' | 'motion_control' | 'motion_control_v2' | 'veo3' | 'muse_video';
+      pipeline: 'face_swap' | 'outfit_change' | 'body_retouch' | 'motion_control' | 'motion_control_v2' | 'veo3' | 'muse_video' | 'remove_watermark';
       amount: number;
       inputKeys: Record<string, string>;
       params: Record<string, unknown>;

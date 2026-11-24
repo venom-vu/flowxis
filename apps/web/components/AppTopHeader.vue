@@ -98,7 +98,7 @@ function isActiveRoute(targetPath: string): boolean {
           class="h-8 w-auto shrink-0"
         />
         <span class="font-display text-2xl font-bold tracking-tight">
-          Flowxis
+          FlowXis
         </span>
       </NuxtLink>
 

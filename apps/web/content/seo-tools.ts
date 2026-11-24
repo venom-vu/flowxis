@@ -77,6 +77,20 @@ export const TOOL_SEO_CONTENT = {
       'Chỉ cắt đúng đoạn cần dùng để tiết kiệm credit.',
     ],
   },
+  'remove-watermark': {
+    heading: 'Xóa watermark, logo, phụ đề khỏi video bằng AI',
+    intro:
+      'Tải video, cắt đoạn cần xử lý theo từng giây và để AI xóa watermark, logo hoặc phụ đề. Giá tính theo số giây của đoạn đã cắt.',
+    steps: [
+      'Tải video MP4 hoặc MOV cần xử lý.',
+      'Cắt đoạn cần dùng bằng thanh trượt.',
+      'Bấm tạo và tải video kết quả khi hoàn tất.',
+    ],
+    tips: [
+      'Chỉ cắt đúng đoạn cần dùng để tiết kiệm credit.',
+      'Video rõ nét, watermark không che phần chuyển động chính sẽ cho kết quả tốt hơn.',
+    ],
+  },
   'veo-3': {
     heading: 'Veo 3: tạo video AI từ văn bản, ảnh hoặc khung hình',
     intro:

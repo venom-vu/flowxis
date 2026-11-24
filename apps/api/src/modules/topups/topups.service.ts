@@ -31,6 +31,7 @@ import { AuditService } from '../audit/audit.service.js';
 import { WalletService } from '../wallet/wallet.service.js';
 import { AccountLockedException } from '../auth/guards/account-locked.guard.js';
 import { PRICING_CONFIG } from '../wallet/tier.js';
+import { RealtimeService } from '../realtime/realtime.service.js';
 import { computeApproveBy } from './approve-by.js';
 import { TopupNotifierService } from './topup-notifier.service.js';
 import { buildVietQrPayload } from './vietqr.js';
@@ -121,6 +122,7 @@ export class TopupsService {
     private readonly notifier: TopupNotifierService,
     private readonly wallet: WalletService,
     private readonly audit: AuditService,
+    private readonly realtime: RealtimeService,
   ) {}
 
   private apiError(Ex: new (r: { code: string; message: string }) => Error, code: ApiErrorCode): Error {
@@ -425,7 +427,15 @@ export class TopupsService {
     }
     const row = await this.prisma.topup.findUnique({ where: { id } });
     if (!row) throw this.apiError(NotFoundException, ApiErrorCode.NOT_FOUND);
-    return this.toAdminDto(row);
+    const dto = this.toAdminDto(row);
+    this.realtime.publish(row.userId, {
+      type: 'topup',
+      topupId: id,
+      status: dto.status,
+      credits: dto.credits,
+      rejectReason: dto.rejectReason ?? null,
+    });
+    return dto;
   }
 
   private async doApprove(
