@@ -73,7 +73,8 @@ const isVideoPipeline = computed<boolean>(
     currentTask.value?.pipeline === 'motion_control' ||
     currentTask.value?.pipeline === 'motion_control_v2' ||
     currentTask.value?.pipeline === 'veo3' ||
-    currentTask.value?.pipeline === 'muse_video',
+    currentTask.value?.pipeline === 'muse_video' ||
+    currentTask.value?.pipeline === 'remove_watermark',
 );
 
 const INPUT_LABELS_VI: Readonly<Record<string, string>> = {
@@ -149,6 +150,7 @@ function getPipelineRoute(pipeline?: string): string {
   if (pipeline === 'motion_control_v2') return '/motion-control-v2';
   if (pipeline === 'veo3') return '/veo-3';
   if (pipeline === 'muse_video') return '/muse-video';
+  if (pipeline === 'remove_watermark') return '/remove-watermark';
   return '/face-swap';
 }
 

@@ -113,6 +113,13 @@ import {
   INTENSITY_DEFAULT,
   getIntensityLabelVi,
   TASK_PIPELINES,
+  REMOVE_WATERMARK_MIN_SECONDS,
+  REMOVE_WATERMARK_MAX_SECONDS,
+  REMOVE_WATERMARK_CREDITS_PER_SECOND,
+  removeWatermarkPrice,
+  removeWatermarkCapSeconds,
+  RemoveWatermarkCreateRequestSchema,
+  RemoveWatermarkCreateResponseSchema,
   MOCK_BODY_RETOUCH_CREATE_REQUEST,
   MOCK_BODY_RETOUCH_TASKS_BY_STATUS,
   MOCK_BODY_RETOUCH_RESULT_RESPONSE,
@@ -934,7 +941,7 @@ describe('@flowxis/contracts', () => {
     const KEY = 'in/10000000-0000-4000-8000-000000000001/60000000-0000-4000-8000-000000000001';
 
     it('exports pipelines and intensity constants', () => {
-      assert.deepEqual([...TASK_PIPELINES], ['face_swap', 'body_retouch', 'motion_control', 'outfit_change', 'motion_control_v2', 'veo3', 'muse_video']);
+      assert.deepEqual([...TASK_PIPELINES], ['face_swap', 'body_retouch', 'motion_control', 'outfit_change', 'motion_control_v2', 'veo3', 'muse_video', 'remove_watermark']);
       assert.deepEqual([INTENSITY_MIN, INTENSITY_MAX, INTENSITY_DEFAULT], [1, 10, 5]);
     });
 
@@ -1322,3 +1329,23 @@ describe('@flowxis/contracts', () => {
     });
   });
 });
+
+describe('Remove watermark', () => { it('giá, Cap và schema', () => {
+  assert.equal(removeWatermarkPrice(5), 5 * REMOVE_WATERMARK_CREDITS_PER_SECOND);
+  assert.throws(() => removeWatermarkPrice(0), RangeError);
+  assert.equal(REMOVE_WATERMARK_MAX_SECONDS, 15);
+  assert.equal(removeWatermarkCapSeconds(), 15);
+  const key = 'uploads/11111111-1111-4111-8111-111111111111/22222222-2222-4222-8222-222222222222.mp4';
+    assert.equal(RemoveWatermarkCreateRequestSchema.safeParse({ videoKey: key, trimStart: 0, trimEnd: 5, extra: 1 }).success, false);
+  const base = {
+    id: '33333333-3333-4333-8333-333333333333',
+    pipeline: 'remove_watermark',
+    status: 'queued',
+    queuePosition: 1,
+    createdAt: '2026-11-24T00:00:00.000Z',
+    updatedAt: '2026-11-24T00:00:00.000Z',
+  };
+  const price = removeWatermarkPrice(5);
+  assert.equal(RemoveWatermarkCreateResponseSchema.safeParse({ ...base, creditCost: price, price }).success, true);
+  assert.equal(RemoveWatermarkCreateResponseSchema.safeParse({ ...base, creditCost: price + 1, price: price + 1 }).success, false);
+}); });

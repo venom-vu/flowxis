@@ -10,6 +10,7 @@
 - [Điều khiển chuyển động v2](https://flowxis.app/motion-control-v2)
 - [Veo 3](https://flowxis.app/veo-3)
 - [Muse Video](https://flowxis.app/muse-video)
+- [Xóa watermark, logo, phụ đề](https://flowxis.app/remove-watermark)
 
 ## Thông tin
 

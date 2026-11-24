@@ -399,6 +399,8 @@ export const PipelinePricingSchema = z.object({
   /** Motion Control v2: cùng công thức, đơn giá riêng. */
   motionControlV2BaseCredits: z.literal(150),
   motionControlV2CreditsPerSecond: z.literal(60),
+  /** Xóa watermark/logo/phụ đề: giá một Task = đơn giá mỗi giây × số giây. */
+  removeWatermarkCreditsPerSecond: z.literal(20),
   /** Veo 3: giá mỗi video 8 giây theo độ phân giải. */
   veo3Credits720p: z.literal(500),
   veo3Credits1080p: z.literal(700),

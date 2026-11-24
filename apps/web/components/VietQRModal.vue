@@ -51,15 +51,43 @@ function onKeydown(e: KeyboardEvent): void {
   }
 }
 
+function syncScrollLock(locked: boolean): void {
+  if (typeof document === 'undefined') return;
+  const body = document.body;
+  const html = document.documentElement;
+  if (!body?.style) return;
+  if (body.dataset) {
+    if (locked) {
+      body.dataset.lockVietqr = '1';
+    } else {
+      delete body.dataset.lockVietqr;
+    }
+  }
+  const stillLocked = body.dataset
+    ? Boolean(body.dataset.lockWorkspace || body.dataset.lockVietqr || body.dataset.lockAuth)
+    : locked;
+  const overflow = stillLocked ? 'hidden' : '';
+  body.style.overflow = overflow;
+  if (html?.style) {
+    html.style.overflow = overflow;
+  }
+}
+
+watch(
+  () => Boolean(props.open && props.topup),
+  (isLocked) => {
+    syncScrollLock(isLocked);
+  },
+  { immediate: true },
+);
+
 watch(
   () => props.open,
   (isOpen) => {
-    if (typeof document !== 'undefined') {
+    if (typeof window !== 'undefined') {
       if (isOpen) {
-        document.body.style.overflow = 'hidden';
         window.addEventListener('keydown', onKeydown);
       } else {
-        document.body.style.overflow = '';
         window.removeEventListener('keydown', onKeydown);
       }
     }
@@ -68,8 +96,8 @@ watch(
 );
 
 onUnmounted(() => {
-  if (typeof document !== 'undefined') {
-    document.body.style.overflow = '';
+  syncScrollLock(false);
+  if (typeof window !== 'undefined') {
     window.removeEventListener('keydown', onKeydown);
   }
 });
@@ -197,7 +225,7 @@ function handleRecreate(): void {
   <div
     v-if="open && topup"
     data-testid="vietqr-modal-backdrop"
-    class="fixed inset-0 !m-0 z-50 flex items-center justify-center bg-cyber-bg/80 p-3 backdrop-blur-sm sm:p-6"
+    class="fixed inset-0 !m-0 z-50 flex items-center justify-center overscroll-contain bg-cyber-bg/80 p-3 backdrop-blur-sm sm:p-6"
   >
     <!-- Centered Dialog Modal trên cả mobile và desktop (bố cục ngang rộng rãi, tránh cuộn dọc) -->
     <div
@@ -205,7 +233,7 @@ function handleRecreate(): void {
       aria-modal="true"
       aria-labelledby="vietqr-modal-title"
       data-testid="vietqr-modal"
-      class="relative max-h-[92dvh] w-full max-w-[740px] overflow-y-auto rounded-2xl border border-cyber-border bg-cyber-surface text-cyber-text shadow-2xl"
+      class="relative max-h-[92dvh] w-full max-w-[740px] overflow-y-auto overscroll-contain rounded-2xl border border-cyber-border bg-cyber-surface text-cyber-text shadow-2xl"
     >
       <!-- Modal Header chuẩn Slate Cyber -->
       <div

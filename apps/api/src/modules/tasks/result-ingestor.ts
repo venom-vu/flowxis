@@ -14,7 +14,7 @@ import {
 } from '../../ports/index.js';
 import { PipelinesService } from '../pipelines/pipelines.service.js';
 import { TasksService } from './tasks.service.js';
-import { buildLocalFfprobeArgs, run, videoTrim } from './video-trim.service.js';
+import { REMOVE_WATERMARK_HEAD_PAD_SECONDS, buildLocalFfprobeArgs, run, videoTrim } from './video-trim.service.js';
 
 export const OUTPUT_MAX_BYTES = 20 * 1024 * 1024;
 export const VIDEO_OUTPUT_MAX_BYTES = 100 * 1024 * 1024;
@@ -157,7 +157,7 @@ export class ResultIngestorService implements ResultIngestor {
       return;
     }
 
-    if (row.pipeline === 'motion_control' || row.pipeline === 'motion_control_v2' || row.pipeline === 'veo3' || row.pipeline === 'muse_video') {
+    if (row.pipeline === 'motion_control' || row.pipeline === 'motion_control_v2' || row.pipeline === 'veo3' || row.pipeline === 'muse_video' || row.pipeline === 'remove_watermark') {
       await this.ingestVideo(task, row, url, gpuCoins, deadlineAt, signal);
       return;
     }
@@ -221,7 +221,7 @@ export class ResultIngestorService implements ResultIngestor {
   /** Nhánh video (Motion Control): tải ra file, ffprobe, remux gắn thẻ, ảnh bìa, ghi R2, chốt. */
   private async ingestVideo(
     task: IngestTask,
-    row: { userId: string; params: unknown },
+    row: { userId: string; params: unknown; pipeline: string },
     url: URL,
     gpuCoins: number | undefined,
     deadlineAt: Date | null,
@@ -275,10 +275,14 @@ export class ResultIngestorService implements ResultIngestor {
           const bad = evaluateIngestProbe(probe);
           if (bad) throw new OutputInvalidError(bad);
           try {
+            // Xóa watermark: bỏ phần đệm đầu (cắt chính xác từng khung nên bắt buộc mã hóa lại).
+            const headCut = row.pipeline === 'remove_watermark' ? REMOVE_WATERMARK_HEAD_PAD_SECONDS : 0;
             await run(
               'nice',
-              ['-n', '19', 'ffmpeg', '-hide_banner', '-loglevel', 'error', '-y', '-i', inFile, '-map', '0:v:0', '-map', '0:a:0?',
-                ...(needsReencode(probe)
+              ['-n', '19', 'ffmpeg', '-hide_banner', '-loglevel', 'error', '-y',
+                ...(headCut > 0 ? ['-ss', String(headCut)] : []),
+                '-i', inFile, '-map', '0:v:0', '-map', '0:a:0?',
+                ...(needsReencode(probe) || headCut > 0
                   ? ['-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-preset', 'veryfast', '-crf', '20', '-c:a', 'aac', '-b:a', '128k']
                   : ['-c', 'copy']),
                 '-metadata', `comment=${EXIF_COMMENT}`, '-metadata', `software=${EXIF_SOFTWARE}`,

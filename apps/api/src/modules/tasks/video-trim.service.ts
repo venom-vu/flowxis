@@ -8,6 +8,11 @@ import type { StoragePort } from '../../ports/index.js';
 
 export const TRIM_FPS = 30;
 export const TRIM_DURATION_TOLERANCE = 0.5;
+/**
+ * Xóa watermark: đệm số giây này bằng khung hình đầu nhân bản vào đầu video gửi RunningHub (workflow hay mất vài khung đầu,
+ * khung đầu còn nguyên watermark); đầu ra bị cắt đúng số giây này nên chỉ còn phần người dùng chọn.
+ */
+export const REMOVE_WATERMARK_HEAD_PAD_SECONDS = 1;
 export const FETCH_ATTEMPTS = 3;
 export const DISK_FACTOR = 3;
 const TRIM_DIR_PREFIX = 'flowxis-trim';
@@ -79,7 +84,14 @@ export class FifoLock {
 }
 
 /** Mảng đối số cố định; chỉ số và đường dẫn do server sinh. */
-export function buildFfmpegArgs(input: string, output: string, trimStart: number, seconds: number): string[] {
+export function buildFfmpegArgs(
+  input: string,
+  output: string,
+  trimStart: number,
+  seconds: number,
+  headPadSeconds = 0,
+): string[] {
+  const pad = headPadSeconds > 0;
   return [
     '-hide_banner',
     '-loglevel',
@@ -90,7 +102,7 @@ export function buildFfmpegArgs(input: string, output: string, trimStart: number
     '-i',
     input,
     '-t',
-    String(seconds),
+    String(seconds + headPadSeconds),
     '-map',
     '0:v:0',
     '-map',
@@ -102,7 +114,8 @@ export function buildFfmpegArgs(input: string, output: string, trimStart: number
     '-r',
     String(TRIM_FPS),
     '-vf',
-    'scale=trunc(iw/2)*2:trunc(ih/2)*2',
+    `${pad ? `tpad=start_mode=clone:start_duration=${headPadSeconds},` : ''}scale=trunc(iw/2)*2:trunc(ih/2)*2`,
+    ...(pad ? ['-af', `adelay=${headPadSeconds * 1000}:all=1`] : []),
     '-pix_fmt',
     'yuv420p',
     '-c:a',
@@ -174,7 +187,8 @@ export class VideoTrimService {
     await fs.promises.rm(this.tmpRoot, { recursive: true, force: true });
   }
 
-  async prepare(ctx: PrepareContext): Promise<Record<string, Buffer>> {
+  async prepare(ctx: PrepareContext, opts: { headPadSeconds?: number } = {}): Promise<Record<string, Buffer>> {
+    const headPad = opts.headPadSeconds ?? 0;
     const { row, storage, signal } = ctx;
     const keys = (row.inputKeys ?? {}) as Record<string, string | undefined>;
     const params = (row.params ?? {}) as Record<string, unknown>;
@@ -183,7 +197,6 @@ export class VideoTrimService {
     const { trimStart, seconds } = params;
     if (
       !videoKey ||
-      !characterKey ||
       !Number.isInteger(trimStart) ||
       !Number.isInteger(seconds) ||
       (trimStart as number) < 0 ||
@@ -192,7 +205,7 @@ export class VideoTrimService {
       throw new PrepareError('INTERNAL_ERROR', 'Thiếu input hoặc tham số cắt');
     }
     return this.lock.run(signal, () =>
-      this.trim(storage, signal, row.id, videoKey, characterKey, trimStart as number, seconds as number),
+      this.trim(storage, signal, row.id, videoKey, characterKey, trimStart as number, seconds as number, headPad),
     );
   }
 
@@ -231,9 +244,10 @@ export class VideoTrimService {
     signal: AbortSignal,
     taskId: string,
     videoKey: string,
-    characterKey: string,
+    characterKey: string | undefined,
     trimStart: number,
     seconds: number,
+    headPad = 0,
   ): Promise<Record<string, Buffer>> {
     await this.fsOp(signal, 'mkdir', () => fs.promises.mkdir(this.tmpRoot, { recursive: true }));
     let head;
@@ -264,7 +278,7 @@ export class VideoTrimService {
       await this.fsOp(signal, 'writeFile', () => fs.promises.writeFile(inFile, video));
 
       try {
-        await run('nice', ['-n', '19', 'ffmpeg', ...buildFfmpegArgs(inFile, outFile, trimStart, seconds)], signal);
+        await run('nice', ['-n', '19', 'ffmpeg', ...buildFfmpegArgs(inFile, outFile, trimStart, seconds, headPad)], signal);
       } catch (err) {
         if (signal.aborted) throw abortError();
         throw new PrepareError('FFMPEG_ERROR', `ffmpeg lỗi: ${String(err)}`);
@@ -276,8 +290,10 @@ export class VideoTrimService {
         if (signal.aborted) throw abortError();
         throw new PrepareError('FFMPEG_ERROR', `ffprobe lỗi: ${String(err)}`);
       }
-      if (!evaluateTrimmedProbe(probe, seconds)) throw new PrepareError('FFMPEG_ERROR', 'File cắt sai thông số');
+      if (!evaluateTrimmedProbe(probe, seconds + headPad)) throw new PrepareError('FFMPEG_ERROR', 'File cắt sai thông số');
       const trimmed = await this.fsOp(signal, 'readFile', () => fs.promises.readFile(outFile));
+      // Pipeline chỉ có video (vd. xóa watermark) không có ảnh nhân vật.
+      if (!characterKey) return { videoKey: trimmed };
       const character = await this.fetchWithRetry(storage, characterKey, signal);
       return { videoKey: trimmed, characterKey: character };
     } finally {

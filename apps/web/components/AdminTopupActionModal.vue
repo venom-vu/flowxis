@@ -209,7 +209,7 @@ function handleSubmit(): void {
   <Dialog v-if="topup" :open="open" @update:open="onOpenChange">
     <DialogContent
       data-testid="admin-topup-action-modal"
-      class="max-h-[90dvh] max-w-lg overflow-y-auto"
+      class="max-h-[90dvh] max-w-lg overflow-y-auto overscroll-contain"
       @interact-outside="(e) => isSubmitting && e.preventDefault()"
     >
       <DialogHeader>

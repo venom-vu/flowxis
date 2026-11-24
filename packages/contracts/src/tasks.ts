@@ -34,7 +34,24 @@ export function motionCapSeconds(pipeline: MotionPipeline, tierCapSeconds: numbe
   return Math.min(MOTION_MAX_SECONDS[pipeline], tierCapSeconds);
 }
 
-export const TASK_PIPELINES = ['face_swap', 'body_retouch', 'motion_control', 'outfit_change', 'motion_control_v2', 'veo3', 'muse_video'] as const;
+/** Xóa watermark/logo/phụ đề: Trim tối thiểu và tối đa (giây). Giới hạn riêng của chức năng, không phụ thuộc `maxVideoSeconds` của Tier. */
+export const REMOVE_WATERMARK_MIN_SECONDS = MOTION_MIN_TRIM_SECONDS;
+export const REMOVE_WATERMARK_MAX_SECONDS = 15;
+/** Giá = đơn giá mỗi giây × số giây (không có phí cố định). */
+export const REMOVE_WATERMARK_CREDITS_PER_SECOND = 20;
+/** Prompt tùy chọn; để trống thì server dùng prompt mặc định. */
+export const REMOVE_WATERMARK_PROMPT_MAX_LENGTH = 300;
+export function removeWatermarkPrice(seconds: number): number {
+  if (!Number.isInteger(seconds) || seconds <= 0) {
+    throw new RangeError('Số giây phải là số nguyên dương.');
+  }
+  return REMOVE_WATERMARK_CREDITS_PER_SECOND * seconds;
+}
+export function removeWatermarkCapSeconds(): number {
+  return REMOVE_WATERMARK_MAX_SECONDS;
+}
+
+export const TASK_PIPELINES = ['face_swap', 'body_retouch', 'motion_control', 'outfit_change', 'motion_control_v2', 'veo3', 'muse_video', 'remove_watermark'] as const;
 export type TaskPipeline = (typeof TASK_PIPELINES)[number];
 export const TaskPipelineSchema = z.enum(TASK_PIPELINES);
 
@@ -474,6 +491,34 @@ export const MotionV2CreateResponseSchema = TaskBaseSchema.extend({
   price: z.number().int().positive(),
 }).superRefine(refineMotionTask);
 export type MotionV2CreateResponse = z.infer<typeof MotionV2CreateResponseSchema>;
+
+/** POST /tasks/remove-watermark — xóa watermark, logo, phụ đề khỏi video: chỉ video đã cắt; giá = đơn giá × số giây. */
+export const RemoveWatermarkCreateRequestSchema = z
+  .object({
+    videoKey: ConfirmedUploadKeySchema,
+    trimStart: TrimSecondSchema('Điểm bắt đầu cắt'),
+    trimEnd: TrimSecondSchema('Điểm kết thúc cắt'),
+    prompt: z
+      .string()
+      .trim()
+      .max(REMOVE_WATERMARK_PROMPT_MAX_LENGTH, `Prompt tối đa ${REMOVE_WATERMARK_PROMPT_MAX_LENGTH} ký tự.`)
+      .default(''),
+  })
+  .strict();
+export type RemoveWatermarkCreateRequest = z.input<typeof RemoveWatermarkCreateRequestSchema>;
+export const RemoveWatermarkCreateResponseSchema = TaskBaseSchema.extend({
+  pipeline: z.literal('remove_watermark'),
+  price: z.number().int().positive(),
+}).superRefine((t, ctx) => {
+  refineTask(t, ctx);
+  if (t.price !== t.creditCost) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['price'], message: 'price phải bằng creditCost' });
+  }
+  if (t.price % REMOVE_WATERMARK_CREDITS_PER_SECOND !== 0) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['price'], message: 'price phải là bội của giá mỗi giây' });
+  }
+});
+export type RemoveWatermarkCreateResponse = z.infer<typeof RemoveWatermarkCreateResponseSchema>;
 
 /** `details.reason` của VALIDATION_FAILED cho video/Trim. */
 export const VALIDATION_REASONS = [

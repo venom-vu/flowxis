@@ -3,7 +3,7 @@ import type {
   PricingConfigResponse,
   TierConfig,
 } from "@flowxis/contracts";
-import { motionCapSeconds } from "@flowxis/contracts";
+import { motionCapSeconds, removeWatermarkCapSeconds } from "@flowxis/contracts";
 
 export type FeatureCategoryId = "all" | "image" | "video";
 
@@ -26,7 +26,8 @@ export type FeaturePipelineId =
   | "motion-control"
   | "motion-control-v2"
   | "veo-3"
-  | "muse-video";
+  | "muse-video"
+  | "remove-watermark";
 
 /** Chức năng tạm ẩn khỏi kho công cụ, sitemap và trang riêng (backend giữ nguyên); xóa id khỏi đây để bật lại. */
 export const HIDDEN_FEATURE_IDS: readonly FeaturePipelineId[] = [];
@@ -111,6 +112,7 @@ export function buildAiFeatureCatalog(
   const tierCapSeconds = activeTierConfig.maxVideoSeconds;
   const motionV1Cap = motionCapSeconds("motion_control", tierCapSeconds);
   const motionV2Cap = motionCapSeconds("motion_control_v2", tierCapSeconds);
+  const watermarkCap = removeWatermarkCapSeconds();
   const {
     faceSwapCredits,
     outfitChangeCredits,
@@ -121,6 +123,7 @@ export function buildAiFeatureCatalog(
     motionControlV2CreditsPerSecond,
     veo3Credits720p,
     museVideoCredits,
+    removeWatermarkCreditsPerSecond,
   } = pricing.pipelines;
 
   const all: AiFeatureTool[] = [
@@ -289,6 +292,29 @@ export function buildAiFeatureCatalog(
       accentGradient: "from-violet-600/30 via-indigo-950 to-cyan-500/30",
       inputRequirementVi: "Mô tả video và 1-9 ảnh tham chiếu (tổng ≤ 11 MB)",
       outputFormatVi: "Video MP4 H.264 kèm âm thanh",
+    },
+    {
+      id: "remove-watermark",
+      slug: "remove-watermark",
+      titleVi: "Xóa Watermark, Logo, Phụ Đề",
+      descriptionVi:
+        "Xóa watermark, logo và phụ đề khỏi video. Cắt đoạn cần xử lý theo từng giây và xem giá credit ngay khi kéo thanh trượt.",
+      category: "video",
+      categoryLabelVi: "Chuyển động video AI",
+      badgeVi: "Mới",
+      icon: "lucide:eraser",
+      billingMode: "per_second",
+      unitCredits: removeWatermarkCreditsPerSecond,
+      priceBadgeVi: `${formatNumberVi(removeWatermarkCreditsPerSecond)} CR / giây`,
+      tierCapSeconds: watermarkCap,
+      tierCapLabelVi: `Tối đa ${formatNumberVi(watermarkCap)} giây`,
+      beforeLabelVi: "Video có watermark, logo, phụ đề",
+      afterLabelVi: "Video sạch",
+      bannerUrl: "/banner/remove-watermark.mp4",
+      bannerType: "video",
+      accentGradient: "from-cyan-500/30 via-indigo-950 to-violet-600/30",
+      inputRequirementVi: "1 video MP4 hoặc MOV cần xóa watermark, logo hoặc phụ đề",
+      outputFormatVi: "Video MP4 H.264",
     },
   ];
   // Chức năng video lên đầu; sort ổn định nên thứ tự trong từng nhóm giữ nguyên.

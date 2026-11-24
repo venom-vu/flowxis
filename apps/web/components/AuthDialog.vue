@@ -18,6 +18,36 @@ function handleKeydown(event: KeyboardEvent): void {
   }
 }
 
+function syncScrollLock(locked: boolean): void {
+  if (typeof document === "undefined") return;
+  const body = document.body;
+  const html = document.documentElement;
+  if (!body?.style) return;
+  if (body.dataset) {
+    if (locked) {
+      body.dataset.lockAuth = "1";
+    } else {
+      delete body.dataset.lockAuth;
+    }
+  }
+  const stillLocked = body.dataset
+    ? Boolean(body.dataset.lockWorkspace || body.dataset.lockVietqr || body.dataset.lockAuth)
+    : locked;
+  const overflow = stillLocked ? "hidden" : "";
+  body.style.overflow = overflow;
+  if (html?.style) {
+    html.style.overflow = overflow;
+  }
+}
+
+watch(
+  () => Boolean(mode.value),
+  (isLocked) => {
+    syncScrollLock(isLocked);
+  },
+  { immediate: true },
+);
+
 // Đăng nhập thành công thì tự đóng dialog đăng nhập.
 watch(me, (next) => {
   if (next && mode.value === "login") {
@@ -37,6 +67,7 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   window.removeEventListener("keydown", handleKeydown);
+  syncScrollLock(false);
 });
 </script>
 
@@ -47,10 +78,10 @@ onBeforeUnmount(() => {
     aria-modal="true"
     aria-labelledby="auth-dialog-title"
     data-testid="auth-dialog"
-    class="fixed inset-0 !m-0 z-50 flex items-center justify-center bg-cyber-bg/80 p-3 backdrop-blur-sm sm:p-6"
+    class="fixed inset-0 !m-0 z-50 flex items-center justify-center overscroll-contain bg-cyber-bg/80 p-3 backdrop-blur-sm sm:p-6"
   >
     <div
-      class="relative max-h-[90dvh] w-full max-w-md overflow-y-auto rounded-2xl border border-cyber-border bg-cyber-surface p-6 text-cyber-text shadow-2xl"
+      class="relative max-h-[90dvh] w-full max-w-md overflow-y-auto overscroll-contain rounded-2xl border border-cyber-border bg-cyber-surface p-6 text-cyber-text shadow-2xl"
     >
       <button
         type="button"

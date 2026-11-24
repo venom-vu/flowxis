@@ -5,6 +5,8 @@ import {
   MOTION_ASPECT_RATIO_DEFAULT,
   MOTION_MIN_TRIM_SECONDS,
   motionCapSeconds,
+  removeWatermarkCapSeconds,
+  removeWatermarkPrice,
   type MotionAspectRatio,
   type Task,
 } from '@flowxis/contracts';
@@ -34,8 +36,9 @@ export function useMotionControl() {
     usePricingConfig();
   const { client } = useApiClient();
 
-  /** v1: có khung hình + prompt; v2: chỉ ảnh nhân vật + đoạn video. */
-  const variant = ref<'v1' | 'v2'>('v1');
+  /** v1: có khung hình + prompt; v2: chỉ ảnh nhân vật + đoạn video; watermark: chỉ video (xóa watermark/logo/phụ đề). */
+  const variant = ref<'v1' | 'v2' | 'watermark'>('v1');
+  const needsCharacter = computed<boolean>(() => variant.value !== 'watermark');
   const characterKey = ref<string | null>(null);
   const videoKey = ref<string | null>(null);
   const trimStart = ref<number>(0);
@@ -55,7 +58,9 @@ export function useMotionControl() {
     const tierCap = currentTierCapSeconds.value;
     const override = serverCapOverride.value;
     const featureCap =
-      tierCap == null
+      variant.value === 'watermark'
+        ? removeWatermarkCapSeconds()
+        : tierCap == null
         ? null
         : motionCapSeconds(
             variant.value === 'v2' ? 'motion_control_v2' : 'motion_control',
@@ -82,7 +87,9 @@ export function useMotionControl() {
   /** Giá theo contracts (motionPrice); null khi chưa có đoạn Trim hợp lệ. */
   const price = computed<number | null>(() =>
     Number.isInteger(seconds.value) && seconds.value > 0
-      ? motionPrice(
+      ? variant.value === 'watermark'
+        ? removeWatermarkPrice(seconds.value)
+        : motionPrice(
           seconds.value,
           variant.value === 'v2' ? 'motion_control_v2' : 'motion_control',
         )
@@ -112,7 +119,7 @@ export function useMotionControl() {
     Boolean(
       !intakePaused.value &&
         isAuthenticated.value &&
-        characterKey.value &&
+        (characterKey.value || !needsCharacter.value) &&
         videoKey.value &&
         capUsable.value &&
         hasValidTrim.value &&
@@ -175,14 +182,16 @@ export function useMotionControl() {
     isSubmitting.value = true;
     submitErrorVi.value = null;
     try {
-      const base = {
-        characterKey: characterKey.value!,
+      const trim = {
         videoKey: videoKey.value!,
         trimStart: trimStart.value,
         trimEnd: trimEnd.value,
       };
+      const base = { ...trim, characterKey: characterKey.value! };
       const task =
-        variant.value === 'v2'
+        variant.value === 'watermark'
+          ? await client.createRemoveWatermarkTask({ ...trim, prompt: prompt.value.trim() })
+          : variant.value === 'v2'
           ? await client.createMotionControlV2Task(base)
           : await client.createMotionControlTask({
             ...base,
@@ -224,6 +233,7 @@ export function useMotionControl() {
     refreshAll,
     isAuthenticated,
     variant,
+    needsCharacter,
     characterKey,
     videoKey,
     trimStart,
