@@ -9,6 +9,7 @@ import { AuthModule } from './modules/auth/index.js';
 import { OpsModule } from './modules/ops/index.js';
 import { OpsAdminModule } from './modules/ops/ops-admin.module.js';
 import { PipelinesModule } from './modules/pipelines/index.js';
+import { RealtimeModule } from './modules/realtime/index.js';
 import { StorageModule } from './modules/storage/index.js';
 import { TasksModule } from './modules/tasks/index.js';
 import { TopupsModule } from './modules/topups/index.js';
@@ -19,6 +20,7 @@ import { WalletModule } from './modules/wallet/index.js';
     InfraModule,
     AuthModule,
     WalletModule,
+    RealtimeModule,
     TasksModule,
     PipelinesModule,
     TopupsModule,

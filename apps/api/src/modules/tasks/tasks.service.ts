@@ -39,6 +39,7 @@ import {
   type TaskListQuery,
   type TaskListResponse,
   type TaskResultResponse,
+  type TaskPipeline,
   type TaskStatus,
   type TierSnapshot,
   type TaskResultInput,
@@ -64,6 +65,7 @@ import { RedisService } from '../../infra/redis.service.js';
 import { assertValidTransition, isTerminal } from './task-transitions.js';
 import { AccountLockedException } from '../auth/guards/account-locked.guard.js';
 import { STORAGE_PORT, type StoragePort } from '../../ports/index.js';
+import { RealtimeService } from '../realtime/realtime.service.js';
 import { PipelinesService } from '../pipelines/pipelines.service.js';
 import { UploadsService } from '../storage/uploads.service.js';
 import { PRICING_CONFIG, tierFromPack } from '../wallet/tier.js';
@@ -164,6 +166,7 @@ export class TasksService {
     private readonly uploads: UploadsService,
     @InjectQueue(TASKS_QUEUE) private readonly queue: Queue,
     private readonly redis: RedisService,
+    private readonly realtime: RealtimeService,
     private readonly pipelines: PipelinesService,
     @Inject(STORAGE_PORT) private readonly storage: StoragePort,
   ) {}
@@ -197,7 +200,7 @@ export class TasksService {
     }
 
     const result = await this.prisma.$transaction(async (tx) => {
-      const rows = await tx.$queryRaw<Array<{ id: string; user_id: string }>>`
+      const rows = await tx.$queryRaw<Array<{ id: string; user_id: string; pipeline: string }>>`
         UPDATE tasks
         SET status = ${to}, reason_code = ${reasonCode ?? null}, result_key = ${resultKey}, updated_at = now(),
           finished_at = CASE WHEN ${terminal}::boolean THEN now() ELSE finished_at END,
@@ -208,7 +211,7 @@ export class TasksService {
           rh_orphan_until = CASE WHEN ${orphanMs}::int IS NOT NULL
             THEN now() + (${orphanMs}::int * interval '1 millisecond') ELSE rh_orphan_until END
         WHERE id = ${taskId}::uuid AND status = ${from}
-        RETURNING id, user_id`;
+        RETURNING id, user_id, pipeline`;
       if (rows.length === 0) return { applied: false };
       if (resultKey !== null && !resultKey.startsWith(`out/${rows[0].user_id}/`)) {
         throw new Error('resultKey không thuộc chủ Task');
@@ -217,8 +220,17 @@ export class TasksService {
       else if (to === 'failed' || to === 'timed_out' || to === 'cancelled') {
         await this.wallet.release(tx, taskId);
       }
-      return { applied: true };
+      return { applied: true, userId: rows[0].user_id, pipeline: rows[0].pipeline };
     });
+    if (result.applied && result.userId) {
+      this.realtime.publish(result.userId, {
+        type: 'task',
+        taskId,
+        pipeline: result.pipeline as TaskPipeline,
+        status: to,
+        reasonCode: reasonCode ?? null,
+      });
+    }
     if (result.applied && isTerminal(to)) {
       // Chỉ là gợi ý nên không chờ: Redis treo không được làm trễ phản hồi sau khi DB đã commit.
       void this.redis.client.set(`task:terminal:${taskId}`, '1', 'EX', 30, 'NX').catch(() => {});

@@ -16,7 +16,9 @@ async function loadSetup(rel, stubs, dir) {
   for (const [spec, source] of Object.entries(stubs)) {
     const file = path.join(dir, `${spec.replace(/[^a-z0-9]/gi, '_')}.mjs`);
     fs.writeFileSync(file, source, 'utf8');
-    const next = code.split(`'${spec}'`).join(JSON.stringify(pathToFileURL(file).href));
+    const href = JSON.stringify(pathToFileURL(file).href);
+    // Import trong SFC có thể dùng nháy đơn hoặc nháy kép tùy định dạng của file nguồn.
+    const next = code.split(`'${spec}'`).join(href).split(`"${spec}"`).join(href);
     assert.notEqual(next, code, `import ${spec} phải được thay (đổi import thì cập nhật test)`);
     code = next;
   }

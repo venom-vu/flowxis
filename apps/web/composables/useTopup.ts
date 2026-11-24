@@ -6,6 +6,7 @@ import {
   type TopupPackId,
 } from '@flowxis/contracts';
 import { ME_KEY, useApiClient } from '~/composables/useApiClient';
+import { onRealtimeEvent } from '~/composables/useRealtime';
 import { resolveApiErrorMessageVi } from '~/utils/api-client';
 import { compactFilters } from '~/utils/compact-filters';
 import {
@@ -340,6 +341,29 @@ export function useTopup() {
       }
     },
   );
+
+  // Admin duyệt/từ chối: cập nhật ngay đơn đang mở và danh sách, không chờ vòng poll 4 giây.
+  onRealtimeEvent((event) => {
+    if (event.type !== 'topup') {
+      return;
+    }
+    const isActive = activeTopup.value?.id === event.topupId;
+    const inList = topups.value.some((t) => t.id === event.topupId);
+    if (!isActive && !inList) {
+      return;
+    }
+    void client
+      .getTopup(event.topupId)
+      .then((updated) => {
+        updateItemInList(updated);
+        if (activeTopup.value?.id === updated.id) {
+          activeTopup.value = updated;
+        }
+      })
+      .catch(() => {
+        // Poll/lần tải sau sẽ đồng bộ lại.
+      });
+  });
 
   onScopeDispose(() => {
     stopCountdown();

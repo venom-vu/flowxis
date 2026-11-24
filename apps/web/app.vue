@@ -9,4 +9,5 @@ useJsonLd((origin) => [buildOrganizationJsonLd(origin), buildWebSiteJsonLd(origi
   <NuxtLayout>
     <NuxtPage />
   </NuxtLayout>
+  <AppToaster />
 </template>

@@ -13,4 +13,5 @@ export * from './tasks.js';
 export * from './topups.js';
 export * from './ops.js';
 export * from './admin.js';
+export * from './realtime.js';
 export * from './mocks.js';

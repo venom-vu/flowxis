@@ -5,7 +5,12 @@ import type {
 } from "@flowxis/contracts";
 import { motionCapSeconds, removeWatermarkCapSeconds } from "@flowxis/contracts";
 
-export type FeatureCategoryId = "all" | "image" | "video";
+export type FeatureCategoryId =
+  | "all"
+  | "image"
+  | "video"
+  | "video-create"
+  | "video-process";
 
 export interface FeatureCategoryOption {
   id: FeatureCategoryId;
@@ -17,6 +22,8 @@ export const FEATURE_CATEGORIES: readonly FeatureCategoryOption[] = [
   { id: "all", labelVi: "Tất cả công cụ", icon: "lucide:layers" },
   { id: "image", labelVi: "Xử lý ảnh AI", icon: "lucide:image" },
   { id: "video", labelVi: "Chuyển động video AI", icon: "lucide:video" },
+  { id: "video-create", labelVi: "Tạo video AI", icon: "lucide:film" },
+  { id: "video-process", labelVi: "Xử lý video AI", icon: "lucide:eraser" },
 ] as const;
 
 export type FeaturePipelineId =
@@ -37,7 +44,7 @@ export interface AiFeatureTool {
   slug: string;
   titleVi: string;
   descriptionVi: string;
-  category: Exclude<FeatureCategoryId, "all">;
+  category: "image" | "video";
   categoryLabelVi: string;
   badgeVi: string;
   icon: string;
@@ -251,11 +258,11 @@ export function buildAiFeatureCatalog(
     {
       id: "veo-3",
       slug: "veo-3",
-      titleVi: "Veo 3 Tạo Video AI",
+      titleVi: "Tạo Video Với Veo 3 AI",
       descriptionVi:
         "Tạo video 8 giây có âm thanh từ mô tả văn bản, từ một ảnh hoặc từ khung hình đầu và cuối. Chọn tỉ lệ khung 16:9 hoặc 9:16 và độ phân giải tới 4K.",
       category: "video",
-      categoryLabelVi: "Chuyển động video AI",
+      categoryLabelVi: "Tạo video AI",
       badgeVi: "Mới",
       icon: "lucide:film",
       billingMode: "per_run",
@@ -274,11 +281,11 @@ export function buildAiFeatureCatalog(
     {
       id: "muse-video",
       slug: "muse-video",
-      titleVi: "Muse Video",
+      titleVi: "Tạo Video Với Muse AI",
       descriptionVi:
         "Tạo video khoảng 10 giây, 720p, có âm thanh từ 1 đến 9 ảnh tham chiếu và mô tả. Chọn tỉ lệ khung hoặc để AI theo tỉ lệ ảnh.",
       category: "video",
-      categoryLabelVi: "Chuyển động video AI",
+      categoryLabelVi: "Tạo video AI",
       badgeVi: "Mới",
       icon: "lucide:images",
       billingMode: "per_run",
@@ -297,11 +304,11 @@ export function buildAiFeatureCatalog(
     {
       id: "remove-watermark",
       slug: "remove-watermark",
-      titleVi: "Xóa Watermark, Logo, Phụ Đề",
+      titleVi: "Xóa Watermark, Logo, Phụ Đề Video",
       descriptionVi:
         "Xóa watermark, logo và phụ đề khỏi video. Cắt đoạn cần xử lý theo từng giây và xem giá credit ngay khi kéo thanh trượt.",
       category: "video",
-      categoryLabelVi: "Chuyển động video AI",
+      categoryLabelVi: "Xử lý video AI",
       badgeVi: "Mới",
       icon: "lucide:eraser",
       billingMode: "per_second",

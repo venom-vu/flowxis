@@ -64,7 +64,7 @@ const {
         </span>
         <div class="space-y-1">
           <h1 class="font-display text-lg font-bold sm:text-2xl">
-            Xóa Watermark, Logo, Phụ Đề
+            Xóa Watermark, Logo, Phụ Đề Video
           </h1>
           <p class="text-xs text-cyber-muted sm:text-sm">
             Tải video, cắt đoạn cần xử lý theo từng giây. Giá được tính theo độ
